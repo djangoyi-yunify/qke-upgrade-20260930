@@ -204,7 +204,8 @@ qke-installer/
 
 **③ 其他目标版本配套镜像**
 
-- 待确认：coredns v1.12.0、pause 3.10、nodelocaldns 1.25.0 等是否已推入私有仓库（kubeadm 升级时 coredns 会自动调整到目标版本配套值，镜像缺失会导致 AddonPhase 失败）。
+- **coredns**：**kk 升级时不会自动升级 coredns**（实测确认）。coredns 版本由 QKE 管理（QKE 3.3.0 实例为 **1.9.2**，实测升级后仍为 1.9.x），**无需**为 k8s 升级准备 coredns v1.12.0 镜像；
+- 待确认：pause 3.10、nodelocaldns 1.25.0 等是否已推入私有仓库。
 
 **④ 注意**
 
@@ -349,7 +350,7 @@ kubectl top nodes
 | 节点版本 | v1.29.10 | **v1.31.2** | ✅ 全部节点 Ready |
 | kube-system pod | 全部 Running | 全部 Running | ✅ 无异常 |
 | 非 Running pod | 无 | 无 | ✅ |
-| coredns 镜像 | — | `registry.qingcloud.com/coredns/coredns:1.9.3` | 待第三阶段升级到 v1.12.0 |
+| coredns 镜像 | — | `registry.qingcloud.com/coredns/coredns:1.9.3` | ✅ 预期（kk 不自动升级 coredns，版本由 QKE 管理） |
 | etcd | v3.5.13 | v3.5.13 | 待第三阶段升级到 v3.5.24 |
 | containerd | v1.7.13 | v1.7.13 | 不变 |
 
@@ -555,7 +556,7 @@ UPDATE qke_db_version SET compatibility_k8s = compatibility_k8s || ',v1.33.4' WH
 | 非 Running pod | 无 | 无 | ✅ |
 | etcd | v3.5.13 | v3.5.13 | ✅ 未升级（满足 1.33.4 要求） |
 | containerd | v1.7.13 | v1.7.13 | ✅ 不变 |
-| coredns 镜像 | `coredns:1.9.3` | `coredns:1.9.3` | ⚠️ **待确认**（见 issues-log #3：未升级到 v1.12.0） |
+| coredns 镜像 | `coredns:1.9.3` | `coredns:1.9.3` | ✅ 预期（**kk 不自动升级 coredns**，版本由 QKE 管理；QKE 3.3.0 实例为 1.9.2） |
 | `qke-cluster-config` | version=v1.31.2, pre_version=v1.29.10 | version=**v1.33.4**, pre_version=**v1.31.2** | ✅ 已调整 |
 | 数据库 `qke_db_cluster.kubernetes_version` | v1.31.2 | **v1.33.4** | ✅ 已调整（专业人员操作） |
 
@@ -702,7 +703,7 @@ kubectl -n kube-system set image deployment coredns coredns=<registry>/coredns/c
 1. **kubekey 版本兼容**：QKE 3.4.0 使用 kubekey 3.1.7，手动升级到 1.33.4 需使用 kubekey 3.1.12；需确认 3.1.12 能识别现有集群的 kubeadm-config，升级前先在测试集群验证。
 2. **etcd 版本**：kubekey 3.1.12 默认 etcd v3.5.24；当前 etcd v3.5.13 满足 1.33.4 最低要求（3.5.11-0），但为保持一致建议升级到 3.5.24（逐节点滚动，见 §6.1③）。
 3. **feature-gates 残留**：k8s 1.33 移除了 `TTLAfterFinished`、`ExpandCSIVolumes` 等 feature-gate；升到 1.33.4 前必须从配置中清理，否则新组件启动失败。qke-cli 的 `removeDeprecatedArgs` 只处理 v1.25/v1.27，**不会自动清理 1.33 的 gate**，必须手动做。
-4. **镜像可用性**：kubeadm 升级时会自动把 coredns 等调到目标版本配套值（1.33.4 → coredns v1.12.0），**必须先把对应镜像推入私有仓库**，否则 AddonPhase 失败导致升级失败。控制面镜像需补齐 v1.29.15 / v1.32.8 / v1.33.4 全部版本（逐 minor 升级会拉取中间版本）。
+4. **镜像可用性**：控制面镜像需补齐 v1.29.15 / v1.32.8 / v1.33.4 全部版本（逐 minor 升级会拉取中间版本），**必须先把对应镜像推入私有仓库**，否则升级失败。**注意：kk 升级时不会自动升级 coredns**（实测确认），coredns 版本由 QKE 管理，无需准备 coredns v1.12.0 镜像。
 5. **数据库一致性**：QKE 平台升级与 k8s 升级后，需保证平台数据库（qke_db_cluster.kubernetes_version、qke_db_component.k8s_versions、qke_db_version.compatibility_k8s）中的版本字段与实际一致，控制台才显示正确版本；只改版本字段，不动状态机字段。
 6. **维护窗口**：部分操作（如 pause 升级需重启 containerd）会中断节点业务，需安排在维护窗口执行。
 7. **备份先行**：每个升级阶段前都需备份（etcd 快照、kubeadm/kubelet 配置、组件镜像、数据库）。
@@ -749,7 +750,9 @@ kubectl -n kube-system set image deployment coredns coredns=<registry>/coredns/c
 
 **pause / coredns / nodelocaldns 与 k8s 版本对应**：
 
-| k8s 版本 | pause | coredns | nodelocaldns |
+> ⚠️ **重要**：下表为 **kubekey/kubeadm 的默认配套值**，但**实测确认 kk 升级时不会自动升级 coredns**——coredns 版本由 QKE 管理（QKE 3.3.0 实例为 **1.9.2**，升级后仍为 1.9.x）。因此**不要**按下表为 coredns 准备镜像或期待其升级。
+
+| k8s 版本 | pause | coredns（kubekey 默认，QKE 不采用） | nodelocaldns |
 |----------|-------|---------|--------------|
 | 1.27 | 3.9 | v1.10.1 | 1.22.20 |
 | 1.28 | 3.9 | v1.10.1 | 1.22.23 |
@@ -758,6 +761,8 @@ kubectl -n kube-system set image deployment coredns coredns=<registry>/coredns/c
 | 1.31 | 3.10 | v1.11.3 | 1.23.1 |
 | 1.32 | 3.10 | v1.11.3 | 1.23.1 |
 | 1.33 | 3.10 | v1.12.0 | 1.25.0 |
+
+**QKE 实际 coredns 版本**：由 QKE 管理，QKE 3.3.0 实例为 **1.9.2**；实测升级到 1.33.4 后仍为 1.9.x（未变）。
 
 ### 10.3 常用命令速查
 
