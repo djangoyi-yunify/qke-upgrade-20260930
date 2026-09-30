@@ -459,6 +459,21 @@ update qke_db_cluster set kubernetes_version='v1.33.4' where cluster_id='cl-vhm7
 
 > 说明：`cluster_id` 可从 `kubectl -n kube-system get cm qke-cluster-config -o jsonpath='{.data.qkeCluster}'` 中的 `env.qingcloud.clusterID` 获取。
 
+**6.3 平台自洽验证（实测，2026-09-30，另一实例 master1 172.22.8.7）**
+
+> 该实例已完成整个升级过程，并在升级后**新增 1 个 worker 节点**（worker 数量 3 → 4），用于验证平台自洽性。
+
+| 检查项 | 实测结果 | 结论 |
+|--------|----------|------|
+| 节点 | 3 master + **4 worker**（worker-s004 新增），全部 v1.33.4 | ✅ |
+| `config-sample.yaml` 的 `kubernetes.version` | **v1.33.4** | ✅ 未被错误渲染成 1.31.2 |
+| `qke-cluster-config` 的 `.kubernetes.version` | **v1.33.4** | ✅ |
+| `qke-cluster-config` 的 `.kubernetes.pre_version` | **v1.31.2** | ✅ |
+| `qke-cluster-config` 节点列表 | 含新增的 worker-s004 | ✅ 新增节点已纳入 |
+| QKE web 控制台显示 k8s 版本 | **1.33.4** | ✅ 符合预期 |
+
+**结论**：平台自洽目标达成——升级后新增 worker 节点，`config-sample.yaml` 仍正确显示 v1.33.4，垂直/水平扩容、修改配置参数时不会错误渲染 k8s 版本，无未知风险。
+
 **参考：备份（建议，本次实测未明确记录）**
 
 > 原则：**备份先行**。以下为参考备份清单（来源：qke-cli worklist），建议在真实环境升级前执行。
@@ -592,7 +607,13 @@ kubectl get pod -A -owide | grep -v Running
 
 ### 7.2 平台基础功能
 
-- 控制台可登录，集群列表/详情显示正确版本；
+**实测验证结果（2026-09-30，实例 master1 172.22.8.7）**：
+
+- ✅ **控制台显示正确版本**：QKE web 控制台显示 k8s 版本为 **1.33.4**，符合预期；
+- ✅ **扩容自洽**：升级后新增 1 个 worker 节点（3 → 4），`config-sample.yaml` 与 `qke-cluster-config` 均正确显示 v1.33.4，未被错误渲染成 1.31.2（详见 §6.1⑥ 6.3）。
+
+**待验证**：
+
 - 使用平台管理员账号、普通账号分别登录，测试创建工作负载、svc 等基础功能；
 - 业务空间网关启用/禁用等功能验证。
 
