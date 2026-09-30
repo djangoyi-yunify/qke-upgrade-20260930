@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 7 轮：第一阶段（QKE 3.3.0→3.4.0）升级细节已填充 §4.1/§4.2 并只读验证通过；测试环境 A 已检查 §2.2.1；骨架为测试环境 B（KSE 4.1.2）预留 §2.2.2；待用户执行第二、三阶段升级后提供细节）
+> **状态**：迭代中（第 9 轮：三阶段升级实测细节全部填充——§4.1/§4.2 第一阶段、§5.1/§5.2 第二阶段、§6.1/§6.2 第三阶段，并只读验证 k8s 已达 v1.33.4；登记问题 #1~#3；待用户确认平台功能验证与遗留问题）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、错误处理、回退方法。
 > **环境**：离线（无法访问互联网）。
 
@@ -374,9 +374,94 @@ kubectl top nodes
 
 ### 6.1 升级方法
 
-> 来源：`/workspace/qke-cli/manual-upgrade-1.33.4-worklist.md`（QKE v3.4.0 / k8s 1.31.2 → 1.33.4 场景）。
+> **实测步骤（2026-09-30，测试环境 A，master1 172.22.8.23）**：升级耗时 **16 分钟**，未遇到问题。
+> 参考来源：`/workspace/qke-cli/manual-upgrade-1.33.4-worklist.md`（QKE v3.4.0 / k8s 1.31.2 → 1.33.4 场景）。
 
-**① 备份（强制，先做再动）**
+**① 修改 kk 配置文件（升级前）**
+
+修改 `/opt/qingcloud/qke/qke-installer/config-sample.yaml`，把 `kubernetes.version` 的值改为 `1.33.4`：
+
+```yaml
+spec:
+  kubernetes:
+    version: v1.33.4      # 由 v1.31.2 改为 v1.33.4
+```
+
+**② 执行 kk 升级命令**
+
+在 master1 的 `/opt/qingcloud/qke/qke-installer` 目录中执行：
+
+```bash
+cd /opt/qingcloud/qke/qke-installer
+./kk upgrade -f config-sample.yaml --skip-pull-images --skip-dependency-check
+```
+
+> 参数说明：
+> - `--skip-pull-images`：跳过向节点预拉镜像（前提：目标镜像已推入私有仓库 `registry.qingcloud.com/kubesphere/`）；
+> - `--skip-dependency-check`：跳过 KubeSphere↔k8s 依赖矩阵检查（QKE 的 KubeSphere 组合可能不在 kubekey 内置矩阵内）；**k8s 目标版本是否在支持列表的校验仍会执行**；
+> - 本次**未使用** `--with-kubernetes` 参数，而是通过修改 `config-sample.yaml` 的 `kubernetes.version` 指定目标版本。
+
+**③ etcd：本次未升级（保持 v3.5.13）**
+
+- **原因**：k8s 1.33.4 可以使用 etcd 3.5.13，无需升级；
+- 实测确认：升级后 `etcdctl version` 仍为 3.5.13，集群正常。
+
+> 参考：kubekey 3.1.12 默认 etcd 为 v3.5.24，installer 包内已备 v3.5.24（`kubekey/etcd/`）；如需升级可逐节点滚动替换二进制（见 §10.3）。1.31+ 推荐 3.5.24，最低要求 3.5.11-0，**3.5.13 满足最低要求**。
+
+**④ feature-gates：本次未清理**
+
+- **原因**：测试环境已有的 `--feature-gates=RotateKubeletServerCertificate=true`，在 k8s 1.33.4 中是**默认开启**的，是否清理它**不会对升级造成影响**；
+- 实测确认：升级顺利完成，未因 feature-gates 报错。
+
+> ⚠️ **风险提示**：真实 QKE 实例的 feature-gates 可能与测试环境存在差异，**这部分内容目前无法获取**（见 issues-log #2）。若真实环境存在 k8s 1.33 已移除的 feature-gate（如 `TTLAfterFinished`、`ExpandCSIVolumes` 等），残留会导致新 kube-apiserver/kubelet 拒绝启动，**升级前必须清理**。清理位置：
+> 1. configmap `kubeadm-config`：删除 `apiServer/controllerManager/scheduler.extraArgs.feature-gates`；
+> 2. configmap `kubelet-config-1.31`：删除 `featureGates`；
+> 3. 各节点 `/etc/kubernetes/manifests/kube-{apiserver,controller-manager,scheduler}.yaml` 的 `--feature-gates`；
+> 4. 各节点 `/var/lib/kubelet/config.yaml` 的 `featureGates`。
+>
+> 检查命令：
+> ```bash
+> kubectl -n kube-system get cm kubeadm-config -o yaml | grep -A5 feature-gates
+> kubectl -n kube-system get cm kubelet-config -o yaml | grep -A5 featureGates
+> ```
+> 另：qke-cli v3.4.0-patch.1 的 `removeDeprecatedArgs` 只处理 v1.25/v1.27，**不会自动清理 1.33 的 gate**。
+
+**⑤ 升级后核对**
+
+```bash
+kubectl get nodes -o wide                      # 全部 Ready 且版本 v1.33.4
+kubectl get pod -A -owide | grep -v Running    # 无异常 pod
+```
+
+**⑥ 平台自洽调整（升级后必做）**
+
+> **目的**：使用户通过 QKE web 控制台管理 QKE 实例时能够自洽——控制台能正确显示实例使用的 k8s 版本；垂直/水平扩容、修改配置参数时，`config-sample.yaml` 中的 k8s 版本不会被错误渲染成 1.31.2 而造成未知风险。
+
+**6.1 configmap 调整**：修改 kube-system 命名空间下 configmap `qke-cluster-config`：
+
+| 字段 | 调整前 | 调整后 |
+|------|--------|--------|
+| `.kubernetes.version` | v1.31.2 | **v1.33.4** |
+| `.kubernetes.pre_version` | v1.29.10 | **v1.31.2** |
+
+**6.2 数据库元数据调整**（专业人员操作）：
+
+| 项 | 值 |
+|----|-----|
+| 数据库 | `qkeplus`（PostgreSQL） |
+| 表 | `qke_db_cluster` |
+| 字段 | `kubernetes_version` |
+| 过滤条件 | `cluster_id`（示例：`cl-vhm7nxnh`；测试环境实测为 `cl-tzc8j1gp`） |
+
+```sql
+update qke_db_cluster set kubernetes_version='v1.33.4' where cluster_id='cl-vhm7nxnh';
+```
+
+> 说明：`cluster_id` 可从 `kubectl -n kube-system get cm qke-cluster-config -o jsonpath='{.data.qkeCluster}'` 中的 `env.qingcloud.clusterID` 获取。
+
+**参考：备份（建议，本次实测未明确记录）**
+
+> 原则：**备份先行**。以下为参考备份清单（来源：qke-cli worklist），建议在真实环境升级前执行。
 
 ```bash
 mkdir -p /data/var/backups
@@ -393,7 +478,7 @@ cp /etc/kubernetes/manifests/* /data/var/backups/
 cp /usr/local/bin/kube* /data/var/backups/
 ```
 
-**② 同步改造后的 installer 包到 master**
+**参考：installer 包同步（若 installer 未更新）**
 
 ```bash
 # 下载并解包（<version> 为集群版本）
@@ -405,7 +490,9 @@ cd /data && rsync -aur qke-installer/yamls qke-installer/charts qke-installer/kk
   --exclude=kubekey/images/*  /opt/qingcloud/qke/qke-installer
 ```
 
-**③ 升级 etcd（3.5.13 → 3.5.24，逐节点滚动）**
+> 本次实测中，installer 包已在第一阶段（QKE 平台升级）随平台升级更新为 kk 3.1.12，故无需单独同步。
+
+**参考：etcd 升级（本次未做，如需可参考）**
 
 ```bash
 # 每节点：停 etcd → 换二进制 → 起 etcd → 查健康
@@ -417,74 +504,24 @@ etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/ssl/etcd/ssl/ca.pem \
   --cert=/etc/ssl/etcd/ssl/node-master1.pem --key=/etc/ssl/etcd/ssl/node-master1-key.pem endpoint health
 ```
 
-> 1.31.2 的 etcd 3.5.13 已满足 1.33.4 最低要求（3.5.11-0），此步**技术上可选**；但 kubekey v3.1.12 默认 etcd 3.5.24，为保持一致建议升级。
-
-**④ 清理 feature-gates（1.33 移除项，升级前必做）**
-
-k8s 1.33 已移除 `TTLAfterFinished`、`ExpandCSIVolumes` 等 feature-gate，残留会导致新 kube-apiserver/kubelet 拒绝启动。**在 1.31.2 → 1.33.4 执行 `kk upgrade` 之前**完成：
-
-1. configmap `kubeadm-config`：删除 `apiServer/controllerManager/scheduler.extraArgs.feature-gates`；
-2. configmap `kubelet-config-1.31`：删除 `featureGates`；
-3. 各节点 `/etc/kubernetes/manifests/kube-{apiserver,controller-manager,scheduler}.yaml` 的 `--feature-gates`；
-4. 各节点 `/var/lib/kubelet/config.yaml` 的 `featureGates`。
-
-```bash
-# 先检查是否存在
-kubectl -n kube-system get cm kubeadm-config -o yaml | grep -A5 feature-gates
-kubectl -n kube-system get cm kubelet-config -o yaml | grep -A5 featureGates
-```
-
-> qke-cli v3.4.0-patch.1 的 `removeDeprecatedArgs` 只处理 v1.25/v1.27，**不会自动清理 1.33 的 gate**，必须手动做。
-
-**⑤ 升级 k8s（1.31.2 → 1.33.4）**
-
-在 master1、installer 目录内执行（`./kk` 为改造后的 kubekey v3.1.12）：
-
-```bash
-cd /opt/qingcloud/qke/qke-installer
-# 方式一：直接指定目标版本（推荐，免改 config-sample.yaml）
-./kk upgrade -f config-sample.yaml --with-kubernetes 1.33.4 --skip-pull-images --skip-dependency-check
-# 方式二：先升到 1.31 最高 patch 再升 1.33（更稳）
-./kk upgrade -f config-sample.yaml --with-kubernetes 1.31.12 --skip-pull-images --skip-dependency-check
-./kk upgrade -f config-sample.yaml --with-kubernetes 1.33.4 --skip-pull-images --skip-dependency-check
-```
-
-> 参数说明：
-> - `--skip-pull-images`：跳过向节点预拉镜像（前提：目标镜像已推入私有仓库）；
-> - `--skip-dependency-check`：跳过 KubeSphere↔k8s 依赖矩阵检查（QKE 的 KubeSphere 组合可能不在 kubekey 内置矩阵内）；**k8s 目标版本是否在支持列表的校验仍会执行**；
-> - 若 `config-sample.yaml` 里 `spec.network.plugin` 非 none，按需处理（参考客户方案设 `spec.network.plugin: none`、`spec.kubernetes.nodelocaldns: false`）。
-
-**⑥ 升级后核对**
-
-```bash
-kubectl get nodes -o wide                      # 全部 Ready 且版本 v1.33.4
-kubectl get pod -A -owide | grep -v Running    # 无异常 pod
-kubectl -n kube-system get deploy coredns -o yaml | grep -E "image:"   # coredns 应为 v1.12.0
-```
-
-**⑦ 手动调整（可选）**
+**参考：手动调整（可选）**
 
 - **pause → 3.10**：改各节点 `/etc/containerd/config.toml` 的 `sandbox_image` 为 `<registry>/pause:3.10`，重启 containerd（会中断业务，需维护窗口）；
 - **crictl → 1.33.0**（可选）：替换 `/usr/bin/crictl`。
 
-**⑧ 数据库字段调整（保证平台自洽）**
-
-数据库 `qke-plus`（PostgreSQL）。**只改版本字段，不动状态机字段**；改前 `\d` 确认列名、改前备份。
+**参考：数据库其他字段调整（KSE 场景）**
 
 | 表 | 字段 | 调整内容 |
 |----|------|---------|
-| `qke_db_cluster` | `kubernetes_version` | 升级后更新为 `v1.33.4`（控制台才显示正确版本） |
 | `qke_db_component` | `k8s_versions` | 给 KSE 组件记录（`component_name='ks-console'`, `component_type='consolePlugin'`）追加 `v1.33.4`，否则 KSE 安装/升级被拦（`CurrentKSENoUpgradeable`） |
 | `qke_db_version` | `compatibility_k8s` | 追加 `v1.33.4`（若后续走平台升级流程，控制台才显示该选项） |
 
 ```sql
--- 1) 更新集群 k8s 版本
-UPDATE qke_db_cluster SET kubernetes_version = 'v1.33.4' WHERE cluster_id = 'cl-xxxxx';
--- 2) KSE 组件补 k8s 兼容版本
+-- KSE 组件补 k8s 兼容版本
 UPDATE qke_db_component
 SET k8s_versions = k8s_versions || '["v1.33.4"]'
 WHERE component_name = 'ks-console' AND component_type = 'consolePlugin';
--- 3) 平台版本记录补兼容 k8s（若走平台流程）
+-- 平台版本记录补兼容 k8s（若走平台流程）
 UPDATE qke_db_version SET compatibility_k8s = compatibility_k8s || ',v1.33.4' WHERE qke_version = 'v3.4.0';
 ```
 
@@ -494,10 +531,34 @@ UPDATE qke_db_version SET compatibility_k8s = compatibility_k8s || ',v1.33.4' WH
 
 ### 6.2 升级后验证
 
-- 节点版本与状态：`kubectl get nodes -o wide`，全部 Ready 且版本 v1.33.4；
-- 系统组件：`kubectl get pods -n kube-system`，coredns/kube-proxy 等正常；
-- coredns 版本：`kubectl -n kube-system get deploy coredns -o yaml | grep -E "image:"`，应为 v1.12.0；
-- 平台功能：控制台可登录、集群列表/详情显示正确版本（依赖 §6.1⑧ 数据库字段调整）；
+**实测验证结果（2026-09-30，测试环境 A）**：
+
+| 验证项 | 升级前 | 升级后 | 结论 |
+|--------|--------|--------|------|
+| 节点版本 | v1.31.2 | **v1.33.4** | ✅ 全部节点 Ready |
+| kube-system pod | 全部 Running | 全部 Running | ✅ 无异常 |
+| 非 Running pod | 无 | 无 | ✅ |
+| etcd | v3.5.13 | v3.5.13 | ✅ 未升级（满足 1.33.4 要求） |
+| containerd | v1.7.13 | v1.7.13 | ✅ 不变 |
+| coredns 镜像 | `coredns:1.9.3` | `coredns:1.9.3` | ⚠️ **待确认**（见 issues-log #3：未升级到 v1.12.0） |
+| `qke-cluster-config` | version=v1.31.2, pre_version=v1.29.10 | version=**v1.33.4**, pre_version=**v1.31.2** | ✅ 已调整 |
+| 数据库 `qke_db_cluster.kubernetes_version` | v1.31.2 | **v1.33.4** | ✅ 已调整（专业人员操作） |
+
+**问题**：未遇到问题。
+
+**验证命令**：
+
+```bash
+kubectl get nodes -o wide                      # 全部 Ready 且版本 v1.33.4
+kubectl get pods -n kube-system                # 系统组件正常
+kubectl get pod -A -owide | grep -v Running    # 无异常 pod
+kubectl -n kube-system get deploy coredns -o jsonpath='{.spec.template.spec.containers[0].image}'
+kubectl -n kube-system get cm qke-cluster-config -o jsonpath='{.data.qkeCluster}' | grep -A2 kubernetes
+```
+
+**待验证（需用户确认）**：
+
+- 平台功能：控制台可登录、集群列表/详情显示正确版本（依赖 §6.1⑥ 数据库字段调整）；
 - 各组件：存储（csi-qingcloud / hydrofs）、网络（calico / hostnic）、KSE（若启用）功能验证。
 
 ### 6.3 错误处理
