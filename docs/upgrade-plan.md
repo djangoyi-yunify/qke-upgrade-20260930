@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 14 轮：子 agent 调研 k8s v1.33.4 对 coredns 的要求——**非"必须"但"强烈建议"升级到 v1.12.0**；§6.1⑦ 更新为调研结论；新增调研报告 refs/k8s-1.33-coredns-compatibility-report.md）
+> **状态**：迭代中（第 15 轮：coredns 升级**已决策为建议项（非必做）**；§6.1⑦ 定位更新；问题 #3 关闭）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、错误处理、回退方法。
 > **环境**：离线（无法访问互联网）。
 
@@ -496,7 +496,9 @@ update qke_db_cluster set kubernetes_version='v1.33.4' where cluster_id='cl-vhm7
 
 **结论**：平台自洽目标达成——升级后新增 worker 节点，`config-sample.yaml` 仍正确显示 v1.33.4，垂直/水平扩容、修改配置参数时不会错误渲染 k8s 版本，无未知风险。
 
-**⑦ coredns 升级（调研结论：非"必须"，但"强烈建议"）**
+**⑦ coredns 升级（建议项，非必做）**
+
+> **定位**：**建议项（非必做）**。coredns 升级**不阻塞** k8s 升级流程，是否执行由用户/运维决定；若执行，建议在第三阶段升级后、业务验证前进行。
 
 > **原则**：
 > - **coredns 版本由 kubekey 版本决定**（**非 QKE**）；
@@ -532,7 +534,7 @@ update qke_db_cluster set kubernetes_version='v1.33.4' where cluster_id='cl-vhm7
 2. **旧 coredns + 新 k8s 有失效先例**：华为云 CCE 记录旧版 coredns 升级后因监听被移除的 `v1beta1.EndpointSlice` 导致新建 Service 无法解析、Headless 返回旧 IP（[华为云 FAQ](https://support.huaweicloud.com/cce_faq/cce_faq_00490.html)）；1.9.2 当前不受影响，但需升级后验证 DNS；
 3. **功能与安全缺失**：1.9.2 已停止维护，缺后续安全修复与新增能力。
 
-**建议**：
+**建议**（已决策 2026-09-30：coredns 升级作为**建议项**，不纳入必做步骤）：
 
 1. **升级到 v1.12.0（推荐）**：k8s 1.33 官方配套版本（kubeadm 常量、coredns/deployment 记录、kubekey 三方一致）；离线环境提前导入 `coredns/coredns:v1.12.0` 镜像并保留 Corefile；
 2. **若短期无法升级**：1.9.x 可继续运行，但升级后必须验证 DNS（新建 Service 解析、Headless 变更解析、coredns 日志无 watch 失败告警），并制定后续升级计划。
