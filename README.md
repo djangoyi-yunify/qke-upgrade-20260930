@@ -53,10 +53,13 @@ qke-upgrade-20260930/
 ├── README.md                 # 项目总览（本文档，AI agent 入口）
 ├── AGENTS.md                 # AI agent 工作指南（约束、工作流、如何持续工作）
 ├── docs/                     # 产出文档
-│   └── upgrade-plan.md       # ⭐ 升级方案（主文档，先骨架后内容，多轮迭代）
+│   ├── upgrade-plan.md       # ⭐ 升级方案（主文档：背景+可操作步骤+问题处理+回退）
+│   ├── test-environment.md   # 测试环境情况（实测数据、验证结果、观察项）
+│   └── decisions-rationale.md# 决策思路与依据（为什么这样做）
 ├── refs/                     # 参考资料
 │   ├── README.md             # 参考资料索引
-│   └── upgrade-plan-of-jinke.md  # 其他项目 k8s 升级方案参考
+│   ├── upgrade-plan-of-jinke.md  # 其他项目 k8s 升级方案参考
+│   └── k8s-1.33-coredns-compatibility-report.md  # coredns 兼容性调研报告
 └── status/                   # 项目管理
     ├── project-status.md     # 项目状态与进展（当前阶段、已完成、进行中、待办）
     ├── issues-log.md         # 升级问题记录（测试中遇到的问题，持续整理）
@@ -69,7 +72,9 @@ qke-upgrade-20260930/
 |------|------|----------|
 | [AGENTS.md](AGENTS.md) | AI agent 工作指南 | **每次开始工作前必读** |
 | [status/project-status.md](status/project-status.md) | 项目当前状态与进展 | 每次开始工作前必读 |
-| [docs/upgrade-plan.md](docs/upgrade-plan.md) | 升级方案主文档 | 撰写/评审升级方案时 |
+| [docs/upgrade-plan.md](docs/upgrade-plan.md) | 升级方案主文档（背景+步骤+问题处理+回退） | 撰写/评审升级方案时 |
+| [docs/test-environment.md](docs/test-environment.md) | 测试环境情况（实测数据、验证结果） | 需要测试环境实测信息时 |
+| [docs/decisions-rationale.md](docs/decisions-rationale.md) | 决策思路与依据（为什么这样做） | 需要了解决策背景时 |
 | [status/issues-log.md](status/issues-log.md) | 升级问题记录 | 整理问题、写错误处理章节时 |
 | [status/decisions.md](status/decisions.md) | 决策记录 | 需要了解关键决策背景时 |
 | [refs/README.md](refs/README.md) | 参考资料索引 | 查找参考资料时 |
