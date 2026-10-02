@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 26 轮：修正编号规则——层级 4 不再用"数字.数字"（如 7.1/7.2），改用加粗字体表达，避免与层级 2 混淆；规则记入 AGENTS.md）
+> **状态**：迭代中（第 27 轮：§3.2 升级后验证并入 §3.1 第 9 步；通用验证命令移至 §10.3 验证类，供后续 k8s 升级复用）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -137,8 +137,15 @@
 5. 界面提示"**发现新集群版本**"；
 6. 在**第一个下拉框**中选择"**QKE v3.4.0**"；
 7. **不勾选**"**升级 K8s**"复选框（保持 k8s v1.27.10 不变）；
-8. 点击"**立即升级**"；
-9. 等待升级完成（实测耗时 **2 分 30 秒**）。
+8. 点击"**立即升级**"，等待升级完成（实测耗时 **2 分 30 秒**）；
+9. **升级后验证**（命令见 §10.3 验证类）：
+   - qke-cli 版本升级为 **v3.4.0-patch.1**；
+   - installer 内 kk 版本为 **v3.1.12**（更新后的 installer 包已生效）；
+   - k8s 版本保持 **v1.27.10** 不变；
+   - 节点全部 Ready，kube-system pod 全部 Running；
+   - 平台组件（cloud-controller-manager / csi-qingcloud-controller / qke-operator）正常。
+
+> 测试环境实测结果见 [test-environment.md](test-environment.md) §2.2。
 
 **升级包导入**：参考 `/workspace/qke-artifacts/README.md`（qke-installer 文件包更新与导入，见 §2.1）。
 
@@ -151,39 +158,11 @@
 
 - 平台升级过程中是否有其他注意事项（如数据库字段、组件兼容性）。
 
-### 3.2 升级后验证
-
-```bash
-# 平台版本（qke-cli 二进制）
-qke-cli version
-
-# installer 内 kk 版本（应为 v3.1.12）
-/opt/qingcloud/qke/qke-installer/kk version
-
-# k8s 版本（应保持 v1.27.10 不变）
-kubectl version
-
-# 节点状态与系统组件
-kubectl get nodes -o wide
-kubectl get pods -n kube-system
-kubectl get pod -A -owide | grep -v Running
-```
-
-**检查项**：
-
-- qke-cli 版本升级为 v3.4.0-patch.1；
-- installer 内 kk 版本为 v3.1.12（更新后的 installer 包已生效）；
-- k8s 版本保持 v1.27.10 不变；
-- 节点全部 Ready，kube-system pod 全部 Running；
-- 平台组件（cloud-controller-manager / csi-qingcloud-controller / qke-operator）正常。
-
-> 测试环境实测结果见 [test-environment.md](test-environment.md) §2.2。
-
-### 3.3 问题处理
+### 3.2 问题处理
 
 - 待填充：常见错误与处理（结合测试问题清单，见 §7）。
 
-### 3.4 回退
+### 3.3 回退
 
 - 待填充：QKE 平台版本回退（见 §8）。
 
@@ -651,6 +630,24 @@ kubectl get pods -n kube-system
 kubectl get pod -A -owide | grep -v Running
 kubectl top nodes
 kubectl -n kube-system get deploy coredns -o yaml | grep -E "image:"
+```
+
+**验证类**（升级后验证通用命令，各阶段升级后均可用）：
+
+```bash
+# 平台版本（qke-cli 二进制）
+qke-cli version
+
+# installer 内 kk 版本
+/opt/qingcloud/qke/qke-installer/kk version
+
+# k8s 版本
+kubectl version
+
+# 节点状态与系统组件
+kubectl get nodes -o wide
+kubectl get pods -n kube-system
+kubectl get pod -A -owide | grep -v Running
 ```
 
 **kk 升级类**（第三阶段，来源：qke-cli worklist + qke-artifacts）：
