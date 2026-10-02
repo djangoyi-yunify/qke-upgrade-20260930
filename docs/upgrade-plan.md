@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 19 轮：§1.5 改为"qke-cli、qke-installer 源和 OCI registry"（去 crane）；§2.3 简写 QKE v3.4.0 导入与 qke-installer 包更新（青云专业人员处理）；澄清离线环境=真实环境）
+> **状态**：迭代中（第 20 轮：去掉"真实环境=离线环境"多处强调（移入 AGENTS.md）；§2 升级前准备仅保留 QKE v3.4.0 导入与 qke-installer 包更新，备份/前置检查并入各阶段步骤）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -17,7 +17,7 @@
 ### 1.2 整体升级步骤（3 步）
 
 1. **导入 QKE v3.4.0**（此工作由**青云专业人员**处理）；
-2. **更新 QKE v3.4.0 的 qke-installer 文件包**（真实环境为离线环境；参考 `/workspace/qke-artifacts/` 中的步骤，见 §2.3）；
+2. **更新 QKE v3.4.0 的 qke-installer 文件包**（参考 `/workspace/qke-artifacts/` 中的步骤，见 §2.1）；
 3. **执行具体的升级步骤**（三段式，见下）。
 
 ### 1.3 三段式升级路径
@@ -65,8 +65,6 @@
 | 存储插件 | csi-qingcloud（暂以测试环境为准） |
 | KSE/KubeSphere | 未安装（暂以测试环境为准） |
 
-> **说明**：本次升级的**真实环境（生产环境）即为离线环境**（无法访问互联网），二者是同一环境，不是两个不同的环境。
-
 **qke-cli、qke-installer 源和 OCI registry**：
 
 | 项 | 值 | 说明 |
@@ -77,36 +75,15 @@
 
 > **注意**：以上为青云公有云环境（qke-artifacts 资源包）的默认值；真实环境若不同，需按实际环境替换。
 
-**生产环境（真实环境，离线）**：待确认（集群拓扑、业务影响、维护窗口、参与人员）。
+**生产环境**：待确认（集群拓扑、业务影响、维护窗口、参与人员）。
 
 ---
 
 ## 2. 升级前准备
 
-### 2.1 变更通知
+> 本节为整体升级步骤（§1.2）第 3 步"执行具体的升级步骤"前的准备（即第 1、2 步），由**青云专业人员**处理；详细操作见专门文档。
 
-- 提前发送变更通知，告知业务方升级时间、影响范围与注意事项；
-- 升级完成并验证后，通知运维人员上线情况与后续注意事项；
-- 待确认：通知对象、通知内容、通知时间。
-
-### 2.2 备份
-
-> 原则：**备份先行**。每个升级阶段/每步升级前都需备份，回退依赖备份。
-
-| 备份项 | 方法 | 说明 |
-|--------|------|------|
-| etcd 快照 | `etcdctl snapshot save` | 任一健康成员执行即可，快照含全量集群状态 |
-| kubeadm/kubelet 配置 | `kubectl get cm -n kube-system kubeadm-config / kubelet-config -o yaml` | 升级前导出 |
-| 组件二进制 | `cp /usr/local/bin/kube*` | kubeadm/kubelet/kubectl |
-| 组件清单 | `cp /etc/kubernetes/manifests/*` | master 静态 Pod 清单 |
-| 数据库 | qkeplus 库备份 | 涉及平台版本/组件记录调整时 |
-| 非 Running Pod 记录 | `kubectl get pod -A -owide \| grep -v Running` | 升级前基线 |
-
-- 待确认：备份目录路径、etcd 备份脚本（如 `/usr/local/bin/kube-scripts/etcd-backup.sh`）是否可用。
-
-### 2.3 QKE v3.4.0 导入与 qke-installer 包更新（由青云专业人员处理）
-
-> 以下 2 部分工作由**青云专业人员**处理，本方案仅简述；详细操作见专门文档。
+### 2.1 QKE v3.4.0 导入与 qke-installer 包更新（由青云专业人员处理）
 
 **① QKE v3.4.0 导入**：由青云专业人员导入 QKE v3.4.0。
 
@@ -120,27 +97,7 @@
 > - **coredns**：kk 升级时**不会自动升级** coredns（实测确认），无需为 k8s 升级准备 coredns v1.12.0 镜像；coredns 升级为**建议项**（见 §5.1⑧）；
 > - 待确认：pause 3.10、nodelocaldns 1.25.0 等是否已推入私有仓库。
 
-### 2.4 前置检查
-
-```bash
-# 节点状态与版本
-kubectl get nodes -o wide
-
-# 系统组件
-kubectl get pods -n kube-system
-
-# 全集群 Pod 状态（非 Running 需关注）
-kubectl get pod -A -owide | grep -v Running
-
-# 资源余量
-kubectl top nodes
-```
-
-**QKE 平台升级前检查（第一阶段）**：
-
-1. web 控制台显示正常状态；
-2. k8s 状态正常：`kubectl version` 与 `kubectl get nodes` 显示的 k8s 版本一致，均为 1.27.10；
-3. k8s 各 pod 无异常，特别是 kube-system 中的 pod。
+> **备份与前置检查**：为**每步升级前**的通用动作（非一次性准备），已并入各阶段升级步骤（§3.1 / §4.1 / §5.1），命令见 §10.3 备份类 / 检查类。
 
 ---
 
@@ -154,24 +111,21 @@ kubectl top nodes
 
 **操作步骤**：
 
-1. 进入 **集群运维 / 升级检查**；
-2. 界面提示"**发现新集群版本**"；
-3. 在**第一个下拉框**中选择"**QKE v3.4.0**"；
-4. **不勾选**"**升级 K8s**"复选框（保持 k8s v1.27.10 不变）；
-5. 点击"**立即升级**"；
-6. 等待升级完成（实测耗时 **2 分 30 秒**）。
+1. **备份**（见 §10.3 备份类）；
+2. **前置检查**（见 §10.3 检查类）：节点状态、系统组件、pod 状态、资源余量；
+3. **QKE 平台升级前检查**：web 控制台显示正常状态；`kubectl version` 与 `kubectl get nodes` 显示的 k8s 版本一致（1.27.10）；kube-system pod 无异常；
+4. 进入 **集群运维 / 升级检查**；
+5. 界面提示"**发现新集群版本**"；
+6. 在**第一个下拉框**中选择"**QKE v3.4.0**"；
+7. **不勾选**"**升级 K8s**"复选框（保持 k8s v1.27.10 不变）；
+8. 点击"**立即升级**"；
+9. 等待升级完成（实测耗时 **2 分 30 秒**）。
 
-**升级包导入**：参考 `/workspace/qke-artifacts/README.md`（qke-installer 文件包更新与导入，见 §2.3）。
-
-**升级前检查**（确保 QKE 3.3.0 实例状态正常）：
-
-1. **web 控制台显示正常状态**；
-2. **k8s 状态正常**：`kubectl version` 与 `kubectl get nodes` 显示的 k8s 版本一致，均为 **1.27.10**；
-3. **k8s 各 pod 无异常**，特别是 kube-system 中的 pod。
+**升级包导入**：参考 `/workspace/qke-artifacts/README.md`（qke-installer 文件包更新与导入，见 §2.1）。
 
 **已知事实**：
 
-- QKE 3.4.0 的 `qke-installer-v3.4.0.tar.gz` 已准备就绪（kk 3.1.12 + 依赖，见 §2.3），存放于私有对象存储 `qkeplus` bucket；
+- QKE 3.4.0 的 `qke-installer-v3.4.0.tar.gz` 已准备就绪（kk 3.1.12 + 依赖，见 §2.1），存放于私有对象存储 `qkeplus` bucket；
 - QKE 3.4.0 控制台支持 k8s 1.27.10 / 1.29.10 / 1.31.2。
 
 **待确认**：
@@ -222,17 +176,18 @@ kubectl get pod -A -owide | grep -v Running
 
 ### 4.1 升级步骤
 
-**每步升级流程：备份 → 控制台升级 → 核对节点 Ready**。
+**每步升级流程：备份 → 前置检查 → 控制台升级 → 核对节点 Ready**。
 
 **操作步骤**（每步）：
 
-1. 备份（见 §2.2）；
-2. 进入 **集群运维 / 升级检查**；
-3. **勾选**"**升级 K8s**"复选框；
-4. 在下拉框中选择对应的 k8s 版本；
-5. 点击"**立即升级**"；
-6. 等待升级完成（实测每步耗时 **15 分钟**）；
-7. 核对所有节点 Ready 且版本为目标版本。
+1. **备份**（见 §10.3 备份类）；
+2. **前置检查**（见 §10.3 检查类）：节点状态、系统组件、pod 状态、资源余量；
+3. 进入 **集群运维 / 升级检查**；
+4. **勾选**"**升级 K8s**"复选框；
+5. 在下拉框中选择对应的 k8s 版本；
+6. 点击"**立即升级**"；
+7. 等待升级完成（实测每步耗时 **15 分钟**）；
+8. 核对所有节点 Ready 且版本为目标版本。
 
 **升级顺序**：
 
@@ -288,7 +243,7 @@ kubectl get pod -A -owide | grep -v Running
 
 ### 5.1 升级步骤
 
-**① 备份**（见 §2.2）。
+**① 备份与前置检查**（备份见 §10.3 备份类；前置检查见 §10.3 检查类）。
 
 **② 修改 kk 配置文件（升级前）**
 
@@ -588,7 +543,7 @@ kubectl -n kube-system set image deployment coredns coredns=<registry>/coredns/c
 5. **数据库一致性**：QKE 平台升级与 k8s 升级后，需保证平台数据库（qke_db_cluster.kubernetes_version、qke_db_component.k8s_versions、qke_db_version.compatibility_k8s）中的版本字段与实际一致，控制台才显示正确版本；只改版本字段，不动状态机字段。
 6. **维护窗口**：部分操作（如 pause 升级需重启 containerd）会中断节点业务，需安排在维护窗口执行。
 7. **备份先行**：每个升级阶段前都需备份（etcd 快照、kubeadm/kubelet 配置、组件镜像、数据库）。
-8. **真实环境（离线）**：所有二进制与镜像需在互联网环境准备后导入真实环境，注意架构（amd64/arm64）一致；镜像保存/推送由青云专业人员处理（见 §2.3），勿用 docker save/load（会丢失多架构）。
+8. **离线环境**：所有二进制与镜像需在互联网环境准备后导入真实环境，注意架构（amd64/arm64）一致；镜像保存/推送由青云专业人员处理（见 §2.1），勿用 docker save/load（会丢失多架构）。
 9. **installer 包备份**：更新 `qke-installer-v3.4.0.tar.gz` 前必须备份原始包（`.20260923` 备份**必须保持不变**），避免覆盖。
 10. **KSE 4.1.2 场景（测试环境 B，后续补充）**：若集群安装 KSE 4.1.2，升级 k8s 后需核对 KSE 组件 `k8s_versions` 兼容性并验证 KSE 功能；KSE 安装/升级可能被 k8s 版本兼容性拦截（`CurrentKSENoUpgradeable`）。当前方案先处理无 KSE 情况。
 
@@ -647,7 +602,7 @@ kubectl -n kube-system set image deployment coredns coredns=<registry>/coredns/c
 
 > 参考（jinke 方案 + qke 手动升级方案草稿），具体命令以实际环境为准。
 
-**备份类**：
+**备份类**（每步升级前执行）：
 
 ```bash
 # etcd 快照（etcd 开启 TLS 时需带证书参数）
@@ -662,14 +617,20 @@ kubectl -n kube-system get cm kubelet-config -o yaml > kubelet-config.yaml
 # 组件二进制与清单
 cp /usr/local/bin/kube* .
 cp /etc/kubernetes/manifests/* .
+
+# 非 Running Pod 记录（升级前基线）
+kubectl get pod -A -owide | grep -v Running
 ```
 
-**检查类**：
+> 数据库（qkeplus 库）备份：涉及平台版本/组件记录调整时执行（专业人员操作）。
+
+**检查类**（每步升级前执行）：
 
 ```bash
 kubectl get nodes -o wide
 kubectl get pods -n kube-system
 kubectl get pod -A -owide | grep -v Running
+kubectl top nodes
 kubectl -n kube-system get deploy coredns -o yaml | grep -E "image:"
 ```
 
