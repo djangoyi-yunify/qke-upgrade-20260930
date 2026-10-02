@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 37 轮：§5.1⑤ feature-gates 增加注意事项——若显式配置的 feature-gate 只有 `RotateKubeletServerCertificate`，则不需要做任何操作）
+> **状态**：迭代中（第 38 轮：§5.1 去掉 ⑨ installer 包同步、⑩ 手动调整、⑪ 数据库其他字段调整（KSE 场景）三个参考小节）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -314,45 +314,6 @@ kubectl run -it --rm dns-test --image=<registry>/busybox:latest -- nslookup kube
 ```
 
 - **若不升级**：升级后必须验证 DNS（新建 Service 解析、Headless 变更解析、coredns 日志无 watch 失败告警）。
-
-**⑨ 参考：installer 包同步（若 installer 未更新）**
-
-```bash
-# 下载并解包（<version> 为集群版本）
-mkdir -p /opt/qingcloud/qke/ && cd /data
-wget "<url>/qke-installer-<version>.tar.gz" --no-check-certificate
-tar zxvf qke-installer-<version>.tar.gz && rm -rf qke-installer-<version>.tar.gz
-# 定向同步（与 qke-cli DownloadInstaller 一致）
-cd /data && rsync -aur qke-installer/yamls qke-installer/charts qke-installer/kk qke-installer/kubekey \
-  --exclude=kubekey/images/*  /opt/qingcloud/qke/qke-installer
-```
-
-> 本次实测中，installer 包已在第一阶段（QKE 平台升级）随平台升级更新为 kk 3.1.12，故无需单独同步。
-
-**⑩ 参考：手动调整（可选）**
-
-- **pause → 3.10**：改各节点 `/etc/containerd/config.toml` 的 `sandbox_image` 为 `<registry>/pause:3.10`，重启 containerd（会中断业务，需维护窗口）；
-- **crictl → 1.33.0**（可选）：替换 `/usr/bin/crictl`。
-
-**⑪ 参考：数据库其他字段调整（KSE 场景）**
-
-| 表 | 字段 | 调整内容 |
-|----|------|---------|
-| `qke_db_component` | `k8s_versions` | 给 KSE 组件记录（`component_name='ks-console'`, `component_type='consolePlugin'`）追加 `v1.33.4`，否则 KSE 安装/升级被拦（`CurrentKSENoUpgradeable`） |
-| `qke_db_version` | `compatibility_k8s` | 追加 `v1.33.4`（若后续走平台升级流程，控制台才显示该选项） |
-
-```sql
--- KSE 组件补 k8s 兼容版本
-UPDATE qke_db_component
-SET k8s_versions = k8s_versions || '["v1.33.4"]'
-WHERE component_name = 'ks-console' AND component_type = 'consolePlugin';
--- 平台版本记录补兼容 k8s（若走平台流程）
-UPDATE qke_db_version SET compatibility_k8s = compatibility_k8s || ',v1.33.4' WHERE qke_version = 'v3.4.0';
-```
-
-> 注意：`qke_db_version` 存的是 **QKE 平台版本**（决定 installer 包），k8s 兼容性主要在 `qke_db_component.k8s_versions` 与 installer 包内 `kubekey/kube/`。
-
-> **KSE 4.1.2 场景（测试环境 B，后续补充）**：若集群安装了 KSE 4.1.2，升级 k8s 后需重点核对 `qke_db_component` 中 KSE 组件记录（`component_name='ks-console'`, `component_type='consolePlugin'`）的 `k8s_versions` 是否包含目标 k8s 版本，否则 KSE 安装/升级被拦（`CurrentKSENoUpgradeable`）；同时需验证 KSE 4.1.2 在目标 k8s 版本下的功能正常（详见 qke-docs/qke-kse-version-support.md）。
 
 ### 5.2 升级后验证
 
