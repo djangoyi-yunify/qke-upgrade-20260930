@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 35 轮：§4.2 标题由"回退"改为"问题处理"；§8 引言回退节引用同步更新）
+> **状态**：迭代中（第 36 轮：§5.1⑤ feature-gates 标题去掉"不清理（按测试环境情况）"，内容改为获取当前显式配置的 feature-gate、删除或保留（根据实际情况而定））
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -250,10 +250,10 @@ cd /opt/qingcloud/qke/qke-installer
 - 保持 etcd v3.5.13 不变，不执行 etcd 升级步骤；
 - 如需升级到 v3.5.24，参考 §10.3（逐节点滚动替换二进制）。
 
-**⑤ feature-gates：不清理（按测试环境情况）**
+**⑤ feature-gates**
 
-- 测试环境 feature-gates 无需清理，直接执行升级；
-- **真实环境升级前**：检查并清理 k8s 1.33 已移除的 feature-gate（如 `TTLAfterFinished`、`ExpandCSIVolumes`），残留会导致新 kube-apiserver/kubelet 拒绝启动。清理位置：
+- 获取当前显式配置的 feature-gate；
+- 删除或保留 feature-gate（根据实际情况而定）。若需删除，清理位置：
   1. configmap `kubeadm-config`：删除 `apiServer/controllerManager/scheduler.extraArgs.feature-gates`；
   2. configmap `kubelet-config-1.31`：删除 `featureGates`；
   3. 各节点 `/etc/kubernetes/manifests/kube-{apiserver,controller-manager,scheduler}.yaml` 的 `--feature-gates`；
