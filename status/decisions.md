@@ -97,6 +97,14 @@
 - **调研结论（子 agent 调研 k8s v1.33.4 官方源码/文档，2026-09-30）**：k8s 1.33 **无 coredns 最低版本要求**，1.9.x 基本可用（监听 v1 EndpointSlice）；**v1.12.0 为官方配套版本，强烈建议升级**（非"必须"）。详见 [refs/k8s-1.33-coredns-compatibility-report.md](refs/k8s-1.33-coredns-compatibility-report.md)。
 - **状态**：已确认（用户提供，2026-09-30）；是否需升级**已调研**（结论：非必须，强烈建议）；**已决策**（2026-09-30）：coredns 升级作为**建议项（非必做）**，不纳入必做步骤。
 
+### D-010：feature-gates 处理（暂时按测试环境情况撰写）
+
+- **日期**：2026-09-30
+- **决策**：真实 QKE 实例的 feature-gates 情况**目前无法知晓**，本方案**暂时按测试环境情况撰写**（§6.1④）：
+  - 测试环境仅有 `--feature-gates=RotateKubeletServerCertificate=true`，在 k8s 1.33.4 中**默认开启**，清理与否不影响升级，故本次未清理；
+  - 真实环境升级前**仍建议**检查并清理 k8s 1.33 已移除的 feature-gate（如 `TTLAfterFinished`、`ExpandCSIVolumes`），残留会导致新 kube-apiserver/kubelet 拒绝启动（检查/清理位置见 §6.1④）。
+- **状态**：已决策（用户提供，2026-09-30）。
+
 ## 待决策事项
 
 - （暂无）

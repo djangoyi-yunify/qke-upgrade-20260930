@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 16 轮：新建 QKE 3.3.0 实例核对——**问题 #1 已解决**（cloud-controller-manager / csi-qingcloud-controller / qke-operator 为 QKE 3.3.0 原生组件）；§4.2/§2.2.1 修正"新增"表述）
+> **状态**：迭代中（第 17 轮：feature-gates **暂时按测试环境情况撰写**（问题 #2 已决策）；§6.1④ 更新撰写依据；新增决策 D-010）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、错误处理、回退方法。
 > **环境**：离线（无法访问互联网）。
 
@@ -431,12 +431,13 @@ cd /opt/qingcloud/qke/qke-installer
 
 > 参考：kubekey 3.1.12 默认 etcd 为 v3.5.24，installer 包内已备 v3.5.24（`kubekey/etcd/`）；如需升级可逐节点滚动替换二进制（见 §10.3）。1.31+ 推荐 3.5.24，最低要求 3.5.11-0，**3.5.13 满足最低要求**。
 
-**④ feature-gates：本次未清理**
+**④ feature-gates：本次未清理（按测试环境情况撰写）**
 
-- **原因**：测试环境已有的 `--feature-gates=RotateKubeletServerCertificate=true`，在 k8s 1.33.4 中是**默认开启**的，是否清理它**不会对升级造成影响**；
+- **测试环境情况**：已有的 `--feature-gates=RotateKubeletServerCertificate=true`，在 k8s 1.33.4 中是**默认开启**的，是否清理它**不会对升级造成影响**；
 - 实测确认：升级顺利完成，未因 feature-gates 报错。
 
-> ⚠️ **风险提示**：真实 QKE 实例的 feature-gates 可能与测试环境存在差异，**这部分内容目前无法获取**（见 issues-log #2）。若真实环境存在 k8s 1.33 已移除的 feature-gate（如 `TTLAfterFinished`、`ExpandCSIVolumes` 等），残留会导致新 kube-apiserver/kubelet 拒绝启动，**升级前必须清理**。清理位置：
+> **撰写依据（已决策 2026-09-30）**：真实 QKE 实例的 feature-gates 情况**目前无法知晓**，本方案**暂时按测试环境情况撰写**（见 issues-log #2）。
+> **建议（真实环境升级前）**：仍按以下方法检查并清理 k8s 1.33 已移除的 feature-gate（如 `TTLAfterFinished`、`ExpandCSIVolumes` 等），残留会导致新 kube-apiserver/kubelet 拒绝启动。清理位置：
 > 1. configmap `kubeadm-config`：删除 `apiServer/controllerManager/scheduler.extraArgs.feature-gates`；
 > 2. configmap `kubelet-config-1.31`：删除 `featureGates`；
 > 3. 各节点 `/etc/kubernetes/manifests/kube-{apiserver,controller-manager,scheduler}.yaml` 的 `--feature-gates`；
