@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 38 轮：§5.1 去掉 ⑨ installer 包同步、⑩ 手动调整、⑪ 数据库其他字段调整（KSE 场景）三个参考小节）
+> **状态**：迭代中（第 39 轮：§5.3 标题由"回退"改为"问题处理"，内容改为排查问题并修复、再次执行 kk upgrade 命令；§8 引言回退节引用同步更新）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -340,12 +340,10 @@ kubectl -n kube-system get cm qke-cluster-config -o jsonpath='{.data.qkeCluster}
 
 > 测试环境实测结果见 [test-environment.md](test-environment.md) §2.4。
 
-### 5.3 回退
+### 5.3 问题处理
 
-- kubeadm 升级失败会自动回滚；
-- 升级完成后如需回退，通过替换组件镜像及二进制方式回退，**回退版本不超过 3 个大版本**；
-- 回退步骤见 §8.5（master 组件镜像、kubelet 二进制、kube-proxy、coredns、etcd、数据库字段）；
-- 待确认：本项目第三阶段回退的具体触发条件与耗时。
+- 排查问题并修复；
+- 再次执行 kk upgrade 命令。
 
 ---
 
@@ -404,7 +402,7 @@ kubectl get pod -A -owide | grep -v Running
 
 ## 8. 回退方案（整体）
 
-> 各阶段回退细节见 §3.2 / §5.3；本节为整体回退原则与通用步骤。
+> 本节为整体回退原则与通用步骤。
 
 ### 8.1 回退条件
 
