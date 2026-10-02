@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 36 轮：§5.1⑤ feature-gates 标题去掉"不清理（按测试环境情况）"，内容改为获取当前显式配置的 feature-gate、删除或保留（根据实际情况而定））
+> **状态**：迭代中（第 37 轮：§5.1⑤ feature-gates 增加注意事项——若显式配置的 feature-gate 只有 `RotateKubeletServerCertificate`，则不需要做任何操作）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -264,6 +264,8 @@ cd /opt/qingcloud/qke/qke-installer
   kubectl -n kube-system get cm kubeadm-config -o yaml | grep -A5 feature-gates
   kubectl -n kube-system get cm kubelet-config -o yaml | grep -A5 featureGates
   ```
+
+> **注意事项**：如果显式配置的 feature-gate 只有 `RotateKubeletServerCertificate`，则不需要做任何操作。
 
 **⑥ 升级后核对**
 
