@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 29 轮：各阶段"问题处理"节提炼到 §7 问题处理（汇总）统一处理共性问题；§3.1 第 3 步"控制台升级前检查"只写检查什么，"节点版本不一致阻止升级"的为什么归入 §7 共性问题 #4；各阶段回退节重编号 §3.2/§4.3/§5.3）
+> **状态**：迭代中（第 30 轮：§4.2/§5.2 升级后验证的通用验证命令改为引用 §10.3 验证类，只保留阶段特有检查，避免与 §3 验证内容重复）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -201,14 +201,7 @@
 
 ### 4.2 升级后验证
 
-```bash
-# 节点版本与状态（全部 Ready 且版本为目标版本）
-kubectl get nodes -o wide
-
-# 系统组件
-kubectl get pods -n kube-system
-kubectl get pod -A -owide | grep -v Running
-```
+**通用验证命令**见 §10.3 验证类（节点版本与状态、系统组件、无异常 pod）。
 
 **检查项**：
 
@@ -368,10 +361,11 @@ UPDATE qke_db_version SET compatibility_k8s = compatibility_k8s || ',v1.33.4' WH
 
 ### 5.2 升级后验证
 
+**通用验证命令**见 §10.3 验证类（节点版本与状态、系统组件、无异常 pod）。
+
+**阶段特有检查**：
+
 ```bash
-kubectl get nodes -o wide                      # 全部 Ready 且版本 v1.33.4
-kubectl get pods -n kube-system                # 系统组件正常
-kubectl get pod -A -owide | grep -v Running    # 无异常 pod
 kubectl -n kube-system get deploy coredns -o jsonpath='{.spec.template.spec.containers[0].image}'
 kubectl -n kube-system get cm qke-cluster-config -o jsonpath='{.data.qkeCluster}' | grep -A2 kubernetes
 ```
