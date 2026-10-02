@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 33 轮：§3.2 回退内容改为"QKE 平台升级（第一阶段）无法回退"）
+> **状态**：迭代中（第 34 轮：§4.1 已知事实去掉底层实现细节（qke-apiserver API 链路、qke-cli upgradeClusterNew），去掉待确认，新增注意事项（必须按 1.27→1.29→1.31 顺序升级）；§4.2 回退内容替换为问题排查/恢复流程）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -198,17 +198,17 @@
 **已知事实**：
 
 - QKE 3.4.0 控制台支持 k8s 1.27.10 / 1.29.10 / 1.31.2，升级顺序固定：1.27.10 → 1.29.10 → 1.31.2；
-- 控制台升级走平台升级链路（qke-apiserver API）：`DescribeUpgradeVersions` → `UpgradeClusterPreCheck` → `UpgradeCluster` → `DescribeClusterUpgradeStatus`（异步，后台状态机自动推进，见 qke-docs/qke-apiserver-api.md §3.6）；
-- 平台升级底层由 qke-cli 的 `upgradeClusterNew` action 驱动，最终调用 kubekey（`./kk upgrade`）执行（见 qke-docs/qke-cli.md §6）；
 - QKE 3.4.0 内置 kubekey 3.1.7，最高支持 k8s 1.31.2。
 
-**待确认**：控制台具体操作路径（菜单入口、升级按钮位置）。
+**注意事项**：
+
+- 必须按照 1.27 → 1.29 → 1.31 的顺序升级，不能直接从 1.27 → 1.31 升级。
 
 ### 4.2 回退
 
-- 控制台升级失败时，kubeadm 升级失败会自动回滚；
-- 升级完成后如需回退，通过替换组件镜像及二进制方式回退（见 §8.5）；
-- 待确认：控制台升级失败后平台侧的处理方式（重试？回退？）。
+- 排查问题并进行修复：离线文件缺失、oci registry 缺少镜像；
+- 再次执行 kk upgrade 命令进行升级，并进行验证；
+- 修改 `qke_db_cluster` 中的字段，让 qke 实例的状态为正常（而不是异常）。
 
 ---
 
