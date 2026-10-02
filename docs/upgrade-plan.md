@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 20 轮：去掉"真实环境=离线环境"多处强调（移入 AGENTS.md）；§2 升级前准备仅保留 QKE v3.4.0 导入与 qke-installer 包更新，备份/前置检查并入各阶段步骤）
+> **状态**：迭代中（第 21 轮：§10.3 删除"镜像保存/推送类"与"installer 文件包更新类"命令，改为指向专门文档）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -654,42 +654,7 @@ etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/ssl/etcd/ssl/ca.pem \
   --cert=/etc/ssl/etcd/ssl/node-master1.pem --key=/etc/ssl/etcd/ssl/node-master1-key.pem endpoint health
 ```
 
-**镜像保存/推送类**（离线环境，crane，来源：qke-artifacts）：
-
-```bash
-# 联网机器：保存 multi-arch 镜像为 OCI tar.gz
-bash scripts/save-images.sh v1.29.15
-bash scripts/save-images.sh v1.32.8
-bash scripts/save-images.sh v1.33.4
-
-# 离线环境：推送镜像到私有 OCI 注册服务
-bash scripts/load-push-images.sh v1.33.4 offline-images/ '<用户名>' '<密码>'
-
-# 校验 multi-arch manifest list
-crane manifest registry.qingcloud.com/kubesphere/kube-apiserver:v1.33.4
-```
-
-**installer 文件包更新类**（离线环境，来源：qke-artifacts）：
-
-```bash
-# 备份私有对象存储中的 qke-installer
-rclone copy qingstor:qkeplus/qke-installer-v3.4.0.tar.gz installer-work/origin/
-rclone copyto qingstor:qkeplus/qke-installer-v3.4.0.tar.gz \
-  qingstor:qkeplus/qke-installer-v3.4.0.tar.gz.$(date +%Y%m%d)
-
-# 校验下载的文件
-bash scripts/verify-checksums.sh
-
-# 制作新的 qke-installer 文件包（轻量处理：tar 追加）
-bash scripts/append-to-installer.sh \
-  installer-work/staging/qke-installer-v3.4.0.tar.gz \
-  installer-work/downloads \
-  installer-work/staging/qke-installer-v3.4.0-new.tar.gz
-
-# 推送新的文件包到私有对象存储
-rclone copyto installer-work/staging/qke-installer-v3.4.0-new.tar.gz \
-  qingstor:qkeplus/qke-installer-v3.4.0.tar.gz
-```
+**镜像保存/推送与 installer 文件包更新**：由**青云专业人员**处理，本方案不展开；见 §2.1 与 `/workspace/qke-artifacts/` 专门文档（更新qke-installer-v3.4.0文件包操作文档、镜像离线保存与推送操作文档）。
 
 ---
 

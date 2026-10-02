@@ -41,6 +41,7 @@
 - [x] 第 18 轮迭代：**文档重构**——测试环境情况剥离到 [docs/test-environment.md](../docs/test-environment.md)，决策思路剥离到 [docs/decisions-rationale.md](../docs/decisions-rationale.md)；[docs/upgrade-plan.md](../docs/upgrade-plan.md) 聚焦背景（含真实环境，缺失信息暂以测试环境为准）+ 可操作步骤（写做什么不写为什么）+ 问题处理 + 回退方案；更新 README/AGENTS.md 导航
 - [x] 第 19 轮迭代：§1.5 标题改为"qke-cli、qke-installer 源和 OCI registry"（内容与标题对应，去 crane）；§2.3 简写 QKE v3.4.0 导入与 qke-installer 包更新（由青云专业人员处理，指向专门文档）；**澄清离线环境=真实环境**（§1.2/§1.5/§9 表述修正）
 - [x] 第 20 轮迭代：去掉"真实环境=离线环境"多处强调（移入 AGENTS.md §1 默认共识）；§2 升级前准备仅保留 QKE v3.4.0 导入与 qke-installer 包更新（去掉变更通知/备份/前置检查），备份与前置检查并入各阶段步骤（§3.1/§4.1/§5.1），命令并入 §10.3 备份类/检查类
+- [x] 第 21 轮迭代：§10.3 删除"镜像保存/推送类"与"installer 文件包更新类"命令（crane/rclone），改为指向专门文档（青云专业人员处理）
 - [ ] 收集缺失信息（生产环境、问题清单等）
 - [ ] 按提纲迭代撰写升级方案（骨架→内容，多轮迭代）
 - [ ] 整理升级过程中遇到的问题到 issues-log
