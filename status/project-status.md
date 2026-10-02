@@ -36,7 +36,8 @@
 - [x] 第 13 轮迭代：澄清 kubekey 版本差异原因（测试环境已调整 installer：3.1.0→3.1.7、3.1.7→3.1.12）；明确 coredns 版本由 kubekey 决定、是否升级由 k8s 要求决定；新增 §6.1⑦ coredns 升级内容；新增决策 D-009
 - [x] 第 14 轮迭代：子 agent 调研 k8s v1.33.4 对 coredns 的要求——**非"必须"但"强烈建议"升级到 v1.12.0**；§6.1⑦ 更新为调研结论；新增调研报告 refs/k8s-1.33-coredns-compatibility-report.md；问题 #3 已调研
 - [x] 第 15 轮迭代：coredns 升级**已决策为建议项（非必做）**；§6.1⑦ 定位更新；问题 #3 关闭
-- [ ] 用户确认遗留问题 #1（平台组件是否原生存在）、#2（真实环境 feature-gates）
+- [x] 第 16 轮迭代：新建 QKE 3.3.0 实例（172.22.8.7）核对——**问题 #1 已解决**（cloud-controller-manager / csi-qingcloud-controller / qke-operator 为 QKE 3.3.0 原生组件）；§4.2/§2.2.1 修正"新增"表述；补充 kubekey 版本说明
+- [ ] 用户确认遗留问题 #2（真实环境 feature-gates）
 - [ ] 收集缺失信息（生产环境、问题清单等）
 - [ ] 按提纲迭代撰写升级方案（骨架→内容，多轮迭代）
 - [ ] 整理升级过程中遇到的问题到 issues-log

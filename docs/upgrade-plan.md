@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 15 轮：coredns 升级**已决策为建议项（非必做）**；§6.1⑦ 定位更新；问题 #3 关闭）
+> **状态**：迭代中（第 16 轮：新建 QKE 3.3.0 实例核对——**问题 #1 已解决**（cloud-controller-manager / csi-qingcloud-controller / qke-operator 为 QKE 3.3.0 原生组件）；§4.2/§2.2.1 修正"新增"表述）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、错误处理、回退方法。
 > **环境**：离线（无法访问互联网）。
 
@@ -120,7 +120,7 @@
 | OS | Ubuntu 20.04.5 LTS |
 | 节点拓扑 | 3 master（172.22.8.22/23/24）+ 3 worker（172.22.8.19/20/21），全部 Ready |
 | 网络插件 | calico（calico-node / calico-kube-controllers） |
-| 存储插件 | 第一阶段升级后新增 csi-qingcloud（controller + node） |
+| 存储插件 | csi-qingcloud（controller + node）——**QKE 3.3.0 原生组件**（新建实例 172.22.8.7 核对确认，非升级新增） |
 | KSE/KubeSphere | 未安装（无相关 namespace） |
 | 私有 OCI 注册服务 | `registry.qingcloud.com/kubesphere/`（kube-apiserver 镜像地址确认） |
 | installer 下载源 | `https://qkeplus.pek3b.qingstor.com`（conf.ini [installer] url） |
@@ -130,7 +130,8 @@
 
 > **kubekey 版本说明（已澄清，2026-09-30）**：
 > - **测试环境**：用户**调整了 installer 包内的 kubekey 版本**——QKE v3.3.0 从 **3.1.0 → 3.1.7**，QKE v3.4.0 从 **3.1.7 → 3.1.12**；因此实测该实例升级前 kk 为 v3.1.7、第一阶段升级后为 v3.1.12；
-> - **真实离线环境不同**：QKE v3.3.0 为 **3.1.0**、QKE v3.4.0 为 **3.1.7**（原始版本），需按 §3.3 更新为 **3.1.12**。
+> - **真实离线环境不同**：QKE v3.3.0 为 **3.1.0**、QKE v3.4.0 为 **3.1.7**（原始版本），需按 §3.3 更新为 **3.1.12**；
+> - **新建 QKE 3.3.0 实例（172.22.8.7）实测 kk 为 v3.1.7**：说明该实例由已调整（3.1.0→3.1.7）的 installer 创建，与测试环境一致。
 
 > **历史记录**：升级前检查在 master1 = 172.22.8.17 的实例上完成（节点 IP 段 .13~.18）；当前测试集群 master1 = 172.22.8.23（节点 IP 段 .19~.24）。
 
@@ -307,7 +308,7 @@ kubectl top nodes
 | k8s 版本 | v1.27.10 | **v1.27.10** | ✅ 保持不变（未勾选"升级 K8s"） |
 | 节点状态 | 全部 Ready | 全部 Ready | ✅ |
 | kube-system pod | 全部 Running | 全部 Running | ✅ 无异常 |
-| 平台组件 | — | cloud-controller-manager、csi-qingcloud-controller、qke-operator | ⚠️ **待确认**（见 issues-log #1：用户指出这些组件在 QKE 3.3.0 就已存在，非升级新增；待新建 QKE 3.3.0 实例核对） |
+| 平台组件 | — | cloud-controller-manager、csi-qingcloud-controller、qke-operator | ✅ **QKE 3.3.0 原生组件**（新建实例 172.22.8.7 核对确认，非升级新增；见 issues-log #1） |
 
 **installer 包内容变化（实测）**：
 
