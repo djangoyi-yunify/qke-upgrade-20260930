@@ -39,6 +39,7 @@
 - [x] 第 16 轮迭代：新建 QKE 3.3.0 实例（172.22.8.7）核对——**问题 #1 已解决**（cloud-controller-manager / csi-qingcloud-controller / qke-operator 为 QKE 3.3.0 原生组件）；§4.2/§2.2.1 修正"新增"表述；补充 kubekey 版本说明
 - [x] 第 17 轮迭代：feature-gates **暂时按测试环境情况撰写**（问题 #2 已决策）；§6.1④ 更新撰写依据；新增决策 D-010
 - [x] 第 18 轮迭代：**文档重构**——测试环境情况剥离到 [docs/test-environment.md](../docs/test-environment.md)，决策思路剥离到 [docs/decisions-rationale.md](../docs/decisions-rationale.md)；[docs/upgrade-plan.md](../docs/upgrade-plan.md) 聚焦背景（含真实环境，缺失信息暂以测试环境为准）+ 可操作步骤（写做什么不写为什么）+ 问题处理 + 回退方案；更新 README/AGENTS.md 导航
+- [x] 第 19 轮迭代：§1.5 标题改为"qke-cli、qke-installer 源和 OCI registry"（内容与标题对应，去 crane）；§2.3 简写 QKE v3.4.0 导入与 qke-installer 包更新（由青云专业人员处理，指向专门文档）；**澄清离线环境=真实环境**（§1.2/§1.5/§9 表述修正）
 - [ ] 收集缺失信息（生产环境、问题清单等）
 - [ ] 按提纲迭代撰写升级方案（骨架→内容，多轮迭代）
 - [ ] 整理升级过程中遇到的问题到 issues-log

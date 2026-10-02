@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 18 轮：文档重构——测试环境情况与决策思路剥离到独立文档，本文档聚焦可操作步骤）
+> **状态**：迭代中（第 19 轮：§1.5 改为"qke-cli、qke-installer 源和 OCI registry"（去 crane）；§2.3 简写 QKE v3.4.0 导入与 qke-installer 包更新（青云专业人员处理）；澄清离线环境=真实环境）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -17,7 +17,7 @@
 ### 1.2 整体升级步骤（3 步）
 
 1. **导入 QKE v3.4.0**（此工作由**青云专业人员**处理）；
-2. **更新离线环境中 QKE v3.4.0 的 qke-installer 文件包**（参考 `/workspace/qke-artifacts/` 中的步骤，见 §2.3）；
+2. **更新 QKE v3.4.0 的 qke-installer 文件包**（真实环境为离线环境；参考 `/workspace/qke-artifacts/` 中的步骤，见 §2.3）；
 3. **执行具体的升级步骤**（三段式，见下）。
 
 ### 1.3 三段式升级路径
@@ -65,19 +65,19 @@
 | 存储插件 | csi-qingcloud（暂以测试环境为准） |
 | KSE/KubeSphere | 未安装（暂以测试环境为准） |
 
-**离线环境**：
+> **说明**：本次升级的**真实环境（生产环境）即为离线环境**（无法访问互联网），二者是同一环境，不是两个不同的环境。
+
+**qke-cli、qke-installer 源和 OCI registry**：
 
 | 项 | 值 | 说明 |
 |----|-----|------|
-| 私有对象存储 | qingstor.com，bucket `qkeplus` | 存放 `qke-installer-v3.4.0.tar.gz` |
-| installer 下载源 | `https://qkeplus.pek3b.qingstor.com/qke-installer-v3.4.0.tar.gz` | 即 `conf.ini [installer] url` |
-| 私有 OCI 注册服务 | `registry.qingcloud.com`，project `kubesphere` | 存放控制面镜像（12 个 multi-arch） |
-| 控制面镜像 | v1.29.15 / v1.32.8 / v1.33.4 × 4 组件 | 已推送至私有 OCI 注册服务（见 §2.3） |
-| 镜像工具 | crane（multi-arch） | 保存/推送镜像，与 docker 无关 |
+| qke-cli | 随 QKE 平台安装，位于 `/opt/qingcloud/qke/bin/qke-cli` | QKE 平台组件之一 |
+| qke-installer 下载源 | `https://qkeplus.pek3b.qingstor.com/qke-installer-v3.4.0.tar.gz` | 即 `conf.ini [installer] url`；存放于私有对象存储 qingstor.com bucket `qkeplus` |
+| 私有 OCI 注册服务 | `registry.qingcloud.com`，project `kubesphere` | 存放控制面镜像（v1.29.15 / v1.32.8 / v1.33.4 × 4 组件，共 12 个） |
 
-> **注意**：以上为青云公有云环境（qke-artifacts 资源包）的默认值；生产离线环境若不同，需按实际环境替换。
+> **注意**：以上为青云公有云环境（qke-artifacts 资源包）的默认值；真实环境若不同，需按实际环境替换。
 
-**生产环境**：待确认（集群拓扑、业务影响、维护窗口、参与人员）。
+**生产环境（真实环境，离线）**：待确认（集群拓扑、业务影响、维护窗口、参与人员）。
 
 ---
 
@@ -104,49 +104,21 @@
 
 - 待确认：备份目录路径、etcd 备份脚本（如 `/usr/local/bin/kube-scripts/etcd-backup.sh`）是否可用。
 
-### 2.3 镜像与升级包准备
+### 2.3 QKE v3.4.0 导入与 qke-installer 包更新（由青云专业人员处理）
 
-> 离线环境无法从外网下载，需在互联网环境准备后导入离线环境。
-> 来源：`/workspace/qke-artifacts/`（QKE 3.4.0 离线升级资源包，已按最终状态准备）。
+> 以下 2 部分工作由**青云专业人员**处理，本方案仅简述；详细操作见专门文档。
 
-**① qke-installer 文件包（已更新，kk 3.1.7 → 3.1.12）**
+**① QKE v3.4.0 导入**：由青云专业人员导入 QKE v3.4.0。
 
-QKE 3.4.0 内置的 `qke-installer-v3.4.0.tar.gz` 已更新为支持 k8s v1.33.4 的最终版本，包内布局：
+**② qke-installer 包更新**：QKE v3.4.0 内置的 `qke-installer-v3.4.0.tar.gz` 已更新为支持 k8s v1.33.4 的最终版本（kk 3.1.7 → 3.1.12 + 依赖 + helm v3.18.5），原始包已备份（`qke-installer-v3.4.0.tar.gz.20260923`，**必须保持不变**）。详细操作见 `/workspace/qke-artifacts/更新qke-installer-v3.4.0文件包操作文档.md`。
 
-```
-qke-installer/
-├── kk                                          # kubekey 3.1.12 二进制
-└── kubekey/                                    # KubeKey 依赖二进制
-    ├── etcd/v3.5.24/amd64/etcd-v3.5.24-linux-amd64.tar.gz
-    ├── cni/v3.27.4/amd64/calicoctl
-    ├── kube/
-    │   ├── v1.29.15/amd64/{kubeadm,kubelet,kubectl}
-    │   ├── v1.32.8/amd64/{kubeadm,kubelet,kubectl}
-    │   └── v1.33.4/amd64/{kubeadm,kubelet,kubectl}
-    └── helm/v3.18.5/amd64/helm
-```
+**③ 控制面镜像**：v1.29.15 / v1.32.8 / v1.33.4 × 4 组件（kube-apiserver / kube-controller-manager / kube-scheduler / kube-proxy）共 12 个 multi-arch 镜像已推送至私有 OCI 注册服务 `registry.qingcloud.com/kubesphere/`。升级前需确认镜像已就绪（kk 升级时逐 minor 拉取中间版本镜像）。详细操作见 `/workspace/qke-artifacts/镜像离线保存与推送操作文档.md`。
 
-- 更新方式：轻量处理（gunzip → tar 追加 → gzip），原始包已备份（`qke-installer-v3.4.0.tar.gz.20260923`，**必须保持不变**）；
-- 校验：`bash scripts/verify-checksums.sh`（SHA256 与 kk 3.1.12 官方 `version/components.json` 一致）；
-- 下载地址与 SHA256 见 `refs/README.md` 引用的 qke-artifacts 文档。
-
-**② 控制面镜像（已推送，12 个 multi-arch）**
-
-升级逐 minor 版本进行，涉及 **v1.29.15 / v1.32.8 / v1.33.4** 三个版本 × 4 组件（kube-apiserver / kube-controller-manager / kube-scheduler / kube-proxy），共 12 个镜像，已推送至私有 OCI 注册服务 `registry.qingcloud.com/kubesphere/`。
-
-- 保存（联网机器）：`bash scripts/save-images.sh v1.29.15|v1.32.8|v1.33.4`（crane，multi-arch）；
-- 推送（离线环境）：`bash scripts/load-push-images.sh <版本> offline-images/ '<用户名>' '<密码>'`（crane）；
-- 校验：`crane manifest registry.qingcloud.com/kubesphere/kube-apiserver:v1.33.4`（mediaType 应为 manifest.list.v2+json）。
-
-**③ 其他目标版本配套镜像**
-
-- **coredns**：kk 升级时**不会自动升级** coredns（实测确认），无需为 k8s 升级准备 coredns v1.12.0 镜像；coredns 升级为**建议项**（见 §5.1⑥）；
-- 待确认：pause 3.10、nodelocaldns 1.25.0 等是否已推入私有仓库。
-
-**④ 注意**
-
-- 二进制与镜像注意架构（amd64/arm64）一致；
-- 若生产离线环境与青云公有云环境不同，需按实际环境替换对象存储/OCI 注册服务地址。
+> **注意**：
+> - 二进制与镜像注意架构（amd64/arm64）一致；
+> - 若真实环境与青云公有云环境不同，需按实际环境替换对象存储/OCI 注册服务地址；
+> - **coredns**：kk 升级时**不会自动升级** coredns（实测确认），无需为 k8s 升级准备 coredns v1.12.0 镜像；coredns 升级为**建议项**（见 §5.1⑧）；
+> - 待确认：pause 3.10、nodelocaldns 1.25.0 等是否已推入私有仓库。
 
 ### 2.4 前置检查
 
@@ -400,7 +372,7 @@ update qke_db_cluster set kubernetes_version='v1.33.4' where cluster_id='cl-vhm7
 - **升级方法**：
 
 ```bash
-# 1) 准备 coredns v1.12.0 镜像并推入私有仓库（crane）
+# 1) 准备 coredns v1.12.0 镜像并推入私有仓库
 # 2) 更新 coredns deployment 镜像
 kubectl -n kube-system set image deployment/coredns coredns=<registry>/coredns/coredns:v1.12.0
 # 3) 核对 coredns pod 状态与 DNS 解析
@@ -616,7 +588,7 @@ kubectl -n kube-system set image deployment coredns coredns=<registry>/coredns/c
 5. **数据库一致性**：QKE 平台升级与 k8s 升级后，需保证平台数据库（qke_db_cluster.kubernetes_version、qke_db_component.k8s_versions、qke_db_version.compatibility_k8s）中的版本字段与实际一致，控制台才显示正确版本；只改版本字段，不动状态机字段。
 6. **维护窗口**：部分操作（如 pause 升级需重启 containerd）会中断节点业务，需安排在维护窗口执行。
 7. **备份先行**：每个升级阶段前都需备份（etcd 快照、kubeadm/kubelet 配置、组件镜像、数据库）。
-8. **离线环境**：所有二进制与镜像需在互联网环境准备后导入离线环境，注意架构（amd64/arm64）一致；镜像保存/推送使用 crane（multi-arch），勿用 docker save/load（会丢失多架构）。
+8. **真实环境（离线）**：所有二进制与镜像需在互联网环境准备后导入真实环境，注意架构（amd64/arm64）一致；镜像保存/推送由青云专业人员处理（见 §2.3），勿用 docker save/load（会丢失多架构）。
 9. **installer 包备份**：更新 `qke-installer-v3.4.0.tar.gz` 前必须备份原始包（`.20260923` 备份**必须保持不变**），避免覆盖。
 10. **KSE 4.1.2 场景（测试环境 B，后续补充）**：若集群安装 KSE 4.1.2，升级 k8s 后需核对 KSE 组件 `k8s_versions` 兼容性并验证 KSE 功能；KSE 安装/升级可能被 k8s 版本兼容性拦截（`CurrentKSENoUpgradeable`）。当前方案先处理无 KSE 情况。
 
