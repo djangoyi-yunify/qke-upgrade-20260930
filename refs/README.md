@@ -7,6 +7,7 @@
 | 文件 | 类型 | 说明 |
 |------|------|------|
 | [upgrade-plan-of-jinke.md](upgrade-plan-of-jinke.md) | 文档 | 其他项目 k8s 升级方案参考（v1.23.17 → v1.33.7）：版本兼容表、升级步骤、回退方案。**注意：该方案场景与本项目不同（非 QKE 平台升级路径），仅作方法论参考** |
+| [k8s-1.33-coredns-compatibility-report.md](k8s-1.33-coredns-compatibility-report.md) | 调研报告 | ⭐ **k8s v1.33.4 对 coredns 版本要求的调研报告**（子 agent 调研官方源码/文档）：结论——非"必须"但"强烈建议"升级到 v1.12.0；含证据、风险分析、建议 |
 
 ## 项目外参考资料（只读引用，不在本项目目录内）
 

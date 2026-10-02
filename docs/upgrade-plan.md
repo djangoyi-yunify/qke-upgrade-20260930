@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 13 轮：澄清 kubekey 版本差异原因（测试环境已调整 installer）、coredns 版本由 kubekey 决定、是否升级由 k8s 要求决定；新增 §6.1⑦ coredns 升级内容；修正 6 处 coredns 表述）
+> **状态**：迭代中（第 14 轮：子 agent 调研 k8s v1.33.4 对 coredns 的要求——**非"必须"但"强烈建议"升级到 v1.12.0**；§6.1⑦ 更新为调研结论；新增调研报告 refs/k8s-1.33-coredns-compatibility-report.md）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、错误处理、回退方法。
 > **环境**：离线（无法访问互联网）。
 
@@ -496,12 +496,24 @@ update qke_db_cluster set kubernetes_version='v1.33.4' where cluster_id='cl-vhm7
 
 **结论**：平台自洽目标达成——升级后新增 worker 节点，`config-sample.yaml` 仍正确显示 v1.33.4，垂直/水平扩容、修改配置参数时不会错误渲染 k8s 版本，无未知风险。
 
-**⑦ coredns 升级（条件性，由 k8s 版本要求决定）**
+**⑦ coredns 升级（调研结论：非"必须"，但"强烈建议"）**
 
 > **原则**：
 > - **coredns 版本由 kubekey 版本决定**（**非 QKE**）；
 > - **kk 升级时不会自动升级 coredns**（实测确认）；
 > - **是否需升级 coredns 由 k8s 版本的要求决定**。
+
+**调研结论（子 agent 调研 k8s v1.33.4 官方源码/文档，2026-09-30）**：
+
+| 判断维度 | 结论 |
+|----------|------|
+| k8s 官方是否**强制要求** coredns ≥ 某版本 | **否**。k8s 1.33 无 coredns 最低版本要求，coredns 是 addon，控制面不校验其版本 |
+| k8s 官方工具（kubeadm）在 1.33 中默认安装的 coredns | **v1.12.0**（`CoreDNSVersion = "v1.12.0"`） |
+| kubeadm upgrade 是否自动升级 coredns | 是（addon 阶段 `CreateOrUpdate`）——**但 QKE 不走 kubeadm，不适用** |
+| coredns 1.9.2 在 k8s 1.33.4 下是否可用 | **基本可用**（监听 v1 EndpointSlice，1.33 仍提供该 API） |
+| 是否建议升级到 v1.12.0 | **强烈建议**（官方配套/测试版本） |
+
+**一句话结论**：**不是"必须"，但属于"强烈建议"**。1.9.x 在 1.33.4 下大概率能继续工作，但不在 k8s 1.33 官方配套/测试范围内，存在功能与安全风险。
 
 **kubekey 对各 k8s 版本的 coredns 配套版本**（来源：[kubekey components.md](https://raw.githubusercontent.com/kubesphere/kubekey/faf2739a7b4ed03f282fd0ef38479e35a49e0340/docs/en/installation/components.md)）：
 
@@ -514,7 +526,18 @@ update qke_db_cluster set kubernetes_version='v1.33.4' where cluster_id='cl-vhm7
 
 **本项目情况**：QKE 3.3.0 实例的 coredns 为 **1.9.2**（实测升级后仍为 1.9.x），低于 k8s 1.33 的配套版本 **v1.12.0**。
 
-**若需升级 coredns，方法如下**：
+**风险（若保持 1.9.x）**：
+
+1. **不在官方配套/测试范围内**：1.9.2 比 1.33 早约 3 年，属"未验证组合"；
+2. **旧 coredns + 新 k8s 有失效先例**：华为云 CCE 记录旧版 coredns 升级后因监听被移除的 `v1beta1.EndpointSlice` 导致新建 Service 无法解析、Headless 返回旧 IP（[华为云 FAQ](https://support.huaweicloud.com/cce_faq/cce_faq_00490.html)）；1.9.2 当前不受影响，但需升级后验证 DNS；
+3. **功能与安全缺失**：1.9.2 已停止维护，缺后续安全修复与新增能力。
+
+**建议**：
+
+1. **升级到 v1.12.0（推荐）**：k8s 1.33 官方配套版本（kubeadm 常量、coredns/deployment 记录、kubekey 三方一致）；离线环境提前导入 `coredns/coredns:v1.12.0` 镜像并保留 Corefile；
+2. **若短期无法升级**：1.9.x 可继续运行，但升级后必须验证 DNS（新建 Service 解析、Headless 变更解析、coredns 日志无 watch 失败告警），并制定后续升级计划。
+
+**升级方法**：
 
 ```bash
 # 1) 准备 coredns v1.12.0 镜像并推入私有仓库（crane）
@@ -525,7 +548,8 @@ kubectl -n kube-system get pods -l k8s-app=kube-dns
 kubectl run -it --rm dns-test --image=<registry>/busybox:latest -- nslookup kubernetes.default
 ```
 
-> **待确认**：本项目是否需要升级 coredns（见 issues-log #3）。实测测试环境未升级 coredns（保持 1.9.3）且未遇到问题，但真实环境是否需升级需按 k8s 版本要求确认。
+> **无法确认项**：QKE 官方是否将 coredns 1.9.x 列为 k8s 1.33.4 的受支持组合（QKE 私有兼容性声明，公开资料无法确认，需查 QKE 官方文档或咨询青云）。
+> 详细调研报告见 [refs/k8s-1.33-coredns-compatibility-report.md](refs/k8s-1.33-coredns-compatibility-report.md)。
 
 **参考：备份（建议，本次实测未明确记录）**
 
