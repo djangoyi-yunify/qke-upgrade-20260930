@@ -62,6 +62,7 @@
 - [x] 第 39 轮迭代：§5.3 标题由"回退"改为"问题处理"，内容改为"排查问题并修复；再次执行 kk upgrade 命令"；§8 引言回退节引用同步更新（去掉各阶段回退细节引用）
 - [x] 第 40 轮迭代：§4.2 明确数据库字段位置为 PostgreSQL 数据库 `qkeplus` 中表 `qke_db_cluster`；§5.3 表述参照 §4.2（排查问题并修复、再次执行 kk upgrade 命令并验证）但不涉及 qke_db_cluster 字段修改
 - [x] 第 41 轮迭代：§4.2/§5.3"排查问题并进行修复"内容调整为"可能的原因是离线文件缺失、oci registry 缺少镜像等"
+- [x] 第 42 轮迭代：§4.2/§5.3 给出 kk upgrade 具体命令（`cd /opt/qingcloud/qke/qke-installer && ./kk upgrade -f config-sample.yaml --skip-pull-images --skip-dependency-check`）
 - [ ] 收集缺失信息（生产环境、问题清单等）
 - [ ] 按提纲迭代撰写升级方案（骨架→内容，多轮迭代）
 - [ ] 整理升级过程中遇到的问题到 issues-log
