@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 25 轮：§2.1 去掉"对 agent 只读，由用户操作，结果反馈后登记"与"缺漏修复记入 issues-log.md"——不把本项目对 agent 的要求/过程强加到真实环境的测试；本项目只撰写升级参考文档，不负责真实环境升级的过程文档）
+> **状态**：迭代中（第 26 轮：修正编号规则——层级 4 不再用"数字.数字"（如 7.1/7.2），改用加粗字体表达，避免与层级 2 混淆；规则记入 AGENTS.md）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -317,14 +317,14 @@ kubectl get pod -A -owide | grep -v Running    # 无异常 pod
 
 **⑦ 平台自洽调整（升级后必做）**
 
-**7.1 configmap 调整**：修改 kube-system 命名空间下 configmap `qke-cluster-config`：
+**configmap 调整**：修改 kube-system 命名空间下 configmap `qke-cluster-config`：
 
 | 字段 | 调整前 | 调整后 |
 |------|--------|--------|
 | `.kubernetes.version` | v1.31.2 | **v1.33.4** |
 | `.kubernetes.pre_version` | v1.29.10 | **v1.31.2** |
 
-**7.2 数据库元数据调整**（专业人员操作）：
+**数据库元数据调整**（专业人员操作）：
 
 | 项 | 值 |
 |----|-----|
