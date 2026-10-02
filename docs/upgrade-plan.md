@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 40 轮：§4.2 明确数据库字段位置为 PostgreSQL 数据库 `qkeplus` 中表 `qke_db_cluster`；§5.3 表述参照 §4.2 但不涉及 qke_db_cluster 字段修改）
+> **状态**：迭代中（第 41 轮：§4.2/§5.3"排查问题并进行修复"内容调整为"可能的原因是离线文件缺失、oci registry 缺少镜像等"）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -206,7 +206,7 @@
 
 ### 4.2 问题处理
 
-- 排查问题并进行修复：离线文件缺失、oci registry 缺少镜像；
+- 排查问题并进行修复：可能的原因是离线文件缺失、oci registry 缺少镜像等；
 - 再次执行 kk upgrade 命令进行升级，并进行验证；
 - 修改 PostgreSQL 数据库 `qkeplus` 中表 `qke_db_cluster` 的字段，让 qke 实例的状态为正常（而不是异常）。
 
@@ -342,7 +342,7 @@ kubectl -n kube-system get cm qke-cluster-config -o jsonpath='{.data.qkeCluster}
 
 ### 5.3 问题处理
 
-- 排查问题并进行修复：离线文件缺失、oci registry 缺少镜像；
+- 排查问题并进行修复：可能的原因是离线文件缺失、oci registry 缺少镜像等；
 - 再次执行 kk upgrade 命令进行升级，并进行验证。
 
 ---
