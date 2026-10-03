@@ -76,6 +76,7 @@
 - [x] 第 53 轮迭代：§8 回退方案重构——新增 §8.1 升级前备份（回退的基础，按真实操作顺序列出完整备份流程：etcd 快照→kubeadm/kubelet 配置→组件二进制与清单→数据库→基线记录），后续小节重编号 8.2-8.7（用户已确认初稿）
 - [x] 第 54 轮迭代：§8 微调——§8.1④ 强调着重备份表 qke_db_cluster（记录 qke 实例状态，更新动作会改变其数据）；§8.2 回退条件改为仅业务应用不兼容才回退，其他情况建议排查并升级到更高版本；§8.3 改为"预计耗时"去掉待确认；§8.4 去掉"kubeadm 自动回滚"表述，改为"kubekey 升级失败不会自动回滚"（子 agent 调研生成 [refs/kubekey-upgrade-failure-rollback-report.md](../refs/kubekey-upgrade-failure-rollback-report.md)，含 v3.1.12 源码证据）
 - [x] 第 55 轮迭代：§8.2 回退条件扩展"不兼容"覆盖范围——业务应用、平台组件（QKE/calico/csi-qingcloud）、第三方组件/中间件、节点基础设施（OS/内核/驱动）
+- [x] 第 56 轮迭代：§8.6 新增"① 还原 etcd 数据"（回退 k8s minor 版本时建议执行）——子 agent 调研生成 [refs/etcd-restore-on-rollback-report.md](../refs/etcd-restore-on-rollback-report.md)（结论：k8s 官方不支持跨 minor 降级，建议默认还原 etcd 数据；含 KEP-4330/GKE 依据、数据还原 vs 版本回退区别、etcdutl snapshot restore 步骤）；原步骤顺延为 ②-⑦；§8.4 回退原则/§8.1① 快照说明/§8.5 涉及组件同步补充 etcd 数据还原
 - [ ] 收集缺失信息（生产环境、问题清单等）
 - [ ] 按提纲迭代撰写升级方案（骨架→内容，多轮迭代）
 - [ ] 整理升级过程中遇到的问题到 issues-log

@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 55 轮：§8.2 回退条件扩展"不兼容"覆盖范围——业务应用、平台组件、第三方组件/中间件、节点基础设施）
+> **状态**：迭代中（第 56 轮：§8.6 新增"① 还原 etcd 数据"（回退 k8s minor 版本时建议执行，子 agent 调研生成 [refs/etcd-restore-on-rollback-report.md](../refs/etcd-restore-on-rollback-report.md)），原步骤顺延为 ②-⑦；§8.4/§8.1①/§8.5 同步补充 etcd 数据还原说明）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -438,6 +438,8 @@ ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
   snapshot save /data/var/backups/etcd-snapshot-$(date +%F-%H%M%S).db
 ```
 
+> 该快照同时用于回退时还原 etcd 数据（见 §8.6①）。
+
 **② 备份 kubeadm / kubelet 配置**（configmap 与节点文件）
 
 ```bash
@@ -483,20 +485,34 @@ kubectl get pod -A -owide | grep -v Running
 
 - **kubekey 升级失败不会自动回滚**：任一阶段失败时 kk 会停在失败步骤，集群可能处于"部分节点已升级"的中间状态，需**人工排查并重试** `kk upgrade`（kk 幂等，可继续完成升级）；若需回退，按 §8.6 回退步骤人工执行（详见 [kubekey-upgrade-failure-rollback-report.md](../refs/kubekey-upgrade-failure-rollback-report.md)）；
 - 升级完成后如需回退，通过**替换组件镜像及二进制**方式将 k8s 版本回退到低版本；
+- 回退 k8s minor 版本时，建议**同时还原 etcd 数据**（从升级前快照恢复），保证旧版本 apiserver 可读全部数据（见 §8.6①）；
 - **回退版本不超过 3 个大版本**（kubeadm 支持范围）；
 - 回退前提：升级前备份（etcd 快照、kubeadm/kubelet 配置、组件镜像、数据库）完整（见 §8.1）。
 
 ### 8.5 回退涉及组件
 
-kube-apiserver、kube-controller-manager、kube-scheduler、kube-proxy、kubelet、CoreDNS、kubeadm、etcd、数据库字段。
+kube-apiserver、kube-controller-manager、kube-scheduler、kube-proxy、kubelet、CoreDNS、kubeadm、**etcd 数据（还原，见 §8.6①）**、etcd 版本（本项目不涉及）、数据库字段。
 
 ### 8.6 回退步骤（参考 jinke 方案，需按本项目各阶段确认）
 
-**① 回退 master 组件版本**（所有 master 节点执行）
+**① 还原 etcd 数据（回退 k8s 版本时建议执行）**
+
+- **定位**：回退 k8s minor 版本时，新版本 apiserver 可能把数据以旧版本无法解析的格式/字段写入 etcd，Kubernetes 官方不支持跨 minor 版本降级；**从升级前快照还原 etcd 数据**是保证回退后旧版本 apiserver 能读取全部数据的可靠方式（详见 [etcd-restore-on-rollback-report.md](../refs/etcd-restore-on-rollback-report.md)）；
+- **与"回退 etcd 版本"的区别**：本项目 etcd 保持 v3.5.13 不升级，**无需回退 etcd 版本**；此处是**还原 etcd 数据**（从快照恢复）；
+- **操作**（所有 master 节点）：
+  - 停 kube-apiserver（移走静态 Pod manifest 或停 kubelet）；
+  - 停 etcd：`systemctl stop etcd`；
+  - 用回退目标版本升级前的快照还原：`etcdutl snapshot restore <快照> --data-dir /var/lib/etcd-restore`（多成员用同一快照 + `--name/--initial-cluster/--initial-cluster-token/--initial-advertise-peer-urls`）；
+  - 替换数据目录：`mv /var/lib/etcd /var/lib/etcd.bak-<日期>`、`mv /var/lib/etcd-restore /var/lib/etcd`、`chown -R etcd:etcd /var/lib/etcd`；
+  - 起 etcd 并验证：`systemctl start etcd`、`etcdctl endpoint health`；
+  - 恢复 apiserver 并重启控制面组件。
+- **权衡**：还原会丢失快照后的变更并需停机，但对"因不兼容而回退"场景可接受；若确认升级未改变 etcd 数据结构，可先尝试不还原直接回退组件版本，异常时再还原（不作为默认路径）。
+
+**② 回退 master 组件版本**（所有 master 节点执行）
 
 进入 `/etc/kubernetes/manifests` 目录，将 kube-apiserver / kube-controller-manager / kube-scheduler 三个组件的镜像替换为待回退版本，kubelet 会自动重启对应静态 Pod。
 
-**② 回退 kubelet 版本**（所有 worker 节点执行）
+**③ 回退 kubelet 版本**（所有 worker 节点执行）
 
 ```bash
 systemctl stop kubelet
@@ -504,7 +520,7 @@ systemctl stop kubelet
 systemctl start kubelet
 ```
 
-**③ 回退 kube-proxy 版本**
+**④ 回退 kube-proxy 版本**
 
 kube-proxy 以 DaemonSet 方式运行，使用 kubectl 修改镜像版本：
 
@@ -512,17 +528,17 @@ kube-proxy 以 DaemonSet 方式运行，使用 kubectl 修改镜像版本：
 kubectl edit ds -n kube-system kube-proxy
 ```
 
-**④ 回退 coredns**
+**⑤ 回退 coredns**
 
 ```bash
 kubectl -n kube-system set image deployment coredns coredns=<registry>/coredns/coredns:<旧版本>
 ```
 
-**⑤ 回退 etcd**（若已升级）
+**⑥ 回退 etcd 版本**（若已升级；本项目 etcd 未升级，无需执行）
 
 从 installer 包取旧版本压缩包解包替换，逐节点滚动回退。
 
-**⑥ 回退数据库字段**（若已调整）
+**⑦ 回退数据库字段**（若已调整）
 
 还原 qke_db_cluster 的 k8s 版本字段、qke_db_component.k8s_versions 等，保证平台状态与回退后的实际版本一致。
 
