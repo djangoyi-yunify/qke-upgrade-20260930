@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 63 轮：KSE 4.1.2 场景处理——§3.1 新增"KSE 情况处理"步骤（区分有/无 KSE 两种情况）；§7.1 新增 KSE 兼容性错误问题（数据库绕过方法）；§9 风险 #9 更新；test-environment §3.1 / decisions-rationale §9 / decisions D-011 / issues-log #5 同步登记）
+> **状态**：迭代中（第 64 轮：§1.5 环境信息 KSE/KubeSphere 值改为"待确认"（可能未安装，也可能安装 KSE 4.1.2，两种情况处理见 §3.1 第 4 步 / §7.1））
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -63,7 +63,7 @@
 | OS | Ubuntu 20.04.5 |
 | 网络插件 | calico（暂以测试环境为准） |
 | 存储插件 | csi-qingcloud（暂以测试环境为准） |
-| KSE/KubeSphere | 未安装（暂以测试环境为准） |
+| KSE/KubeSphere | **待确认**（可能未安装，也可能安装 KSE 4.1.2；两种情况处理见 §3.1 第 4 步 / §7.1） |
 
 **qke-cli、qke-installer 源和 OCI registry**：
 

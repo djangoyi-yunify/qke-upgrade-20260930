@@ -84,6 +84,7 @@
 - [x] 第 61 轮迭代：**更正 calico-node 调研报告的 calicoctl 获取方式**——用户反馈 `kubectl exec ... calicoctl` 报 `executable file not found in $PATH`；测试环境（master1 172.22.8.7，calico v3.27.4）实测确认 calicoctl 不在 calico-node 容器内（v3.20+ 已移除），主机 `/usr/local/bin/calicoctl` v3.27.4 可用；报告 §3.2/§3.4/§3.6/§4 与 upgrade-plan §7.1 的 calicoctl 命令改为在节点主机执行，补充官方 Install calicoctl 参考与实测核对说明
 - [x] 第 62 轮迭代：前置检查引用改为内联检查项（方案 B）——§3.1/§4.1 第 2 步、§5.1① 去掉"见 §10.3 检查类"，检查项（节点状态、系统组件、pod 状态、资源余量）内联；§10.3 检查类标注"命令速查，检查项见各阶段操作步骤"；§2 说明同步更新
 - [x] 第 63 轮迭代：KSE 4.1.2 场景处理（采纳全部建议）——§3.1 新增"KSE 情况处理"步骤（区分有/无 KSE 两种情况，有 KSE 时数据库绕过）；§7.1 新增"QKE 实例安装 KSE 4.1.2 控制台报兼容性错误"问题（含核对/定位方法 + 数据库绕过 SQL）；§9 风险 #9 更新；test-environment §3.1、decisions-rationale §9、decisions D-011、issues-log #5 同步登记
+- [x] 第 64 轮迭代：§1.5 环境信息 KSE/KubeSphere 值改为"待确认"（可能未安装，也可能安装 KSE 4.1.2，两种情况处理见 §3.1 第 4 步 / §7.1）
 - [ ] 收集缺失信息（生产环境、问题清单等）
 - [ ] 按提纲迭代撰写升级方案（骨架→内容，多轮迭代）
 - [ ] 整理升级过程中遇到的问题到 issues-log
