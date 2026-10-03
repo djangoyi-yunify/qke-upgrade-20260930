@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 57 轮：§8.6 删除"⑥ 回退 etcd 版本"（本项目 etcd 不升级，无需回退版本）；"⑦ 回退数据库字段"改为 ⑥ 且只保留 qke_db_cluster；§8.5 同步去掉"etcd 版本（本项目不涉及）"）
+> **状态**：迭代中（第 58 轮：去掉 §9 风险 #2"etcd 版本"（子 agent 调研确认 etcd v3.5.13 满足 k8s v1.33.4 要求，无兼容性风险，生成 [refs/etcd-k8s-1.33-support-report.md](../refs/etcd-k8s-1.33-support-report.md)）；§10.3 etcd 升级命令标注为可选升级项）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -549,15 +549,14 @@ kubectl -n kube-system set image deployment coredns coredns=<registry>/coredns/c
 > 基于参考资料与已知事实整理，随升级问题清单补充完善。
 
 1. **kubekey 版本兼容**：QKE 3.4.0 使用 kubekey 3.1.7，手动升级到 1.33.4 需使用 kubekey 3.1.12；需确认 3.1.12 能识别现有集群的 kubeadm-config，升级前先在真实环境的测试集群验证（见 §2.1）。
-2. **etcd 版本**：kubekey 3.1.12 默认 etcd v3.5.24；当前 etcd v3.5.13 满足 1.33.4 最低要求（3.5.11-0），本次不升级。
-3. **feature-gates 残留**：k8s 1.33 移除了 `TTLAfterFinished`、`ExpandCSIVolumes` 等 feature-gate；真实环境升级前必须检查并清理，否则新组件启动失败。qke-cli 的 `removeDeprecatedArgs` 只处理 v1.25/v1.27，**不会自动清理 1.33 的 gate**，必须手动做。
-4. **镜像可用性**：控制面镜像需补齐 v1.29.15 / v1.32.8 / v1.33.4 全部版本（逐 minor 升级会拉取中间版本），**必须先把对应镜像推入私有仓库**，否则升级失败。**注意：kk 升级时不会自动升级 coredns**（实测确认）。
-5. **数据库一致性**：QKE 平台升级与 k8s 升级后，需保证平台数据库（qke_db_cluster.kubernetes_version、qke_db_component.k8s_versions、qke_db_version.compatibility_k8s）中的版本字段与实际一致，控制台才显示正确版本；只改版本字段，不动状态机字段。
-6. **维护窗口**：部分操作（如 pause 升级需重启 containerd）会中断节点业务，需安排在维护窗口执行。
-7. **备份先行**：每个升级阶段前都需备份（etcd 快照、kubeadm/kubelet 配置、组件镜像、数据库）。
-8. **离线环境**：所有二进制与镜像需在互联网环境准备后导入真实环境，注意架构（amd64/arm64）一致；镜像保存/推送由青云专业人员处理（见 §2.1），勿用 docker save/load（会丢失多架构）。
-9. **installer 包备份**：更新 `qke-installer-v3.4.0.tar.gz` 前必须备份原始包（`.20260923` 备份**必须保持不变**），避免覆盖。
-10. **KSE 4.1.2 场景（测试环境 B，后续补充）**：若集群安装 KSE 4.1.2，升级 k8s 后需核对 KSE 组件 `k8s_versions` 兼容性并验证 KSE 功能；KSE 安装/升级可能被 k8s 版本兼容性拦截（`CurrentKSENoUpgradeable`）。当前方案先处理无 KSE 情况。
+2. **feature-gates 残留**：k8s 1.33 移除了 `TTLAfterFinished`、`ExpandCSIVolumes` 等 feature-gate；真实环境升级前必须检查并清理，否则新组件启动失败。qke-cli 的 `removeDeprecatedArgs` 只处理 v1.25/v1.27，**不会自动清理 1.33 的 gate**，必须手动做。
+3. **镜像可用性**：控制面镜像需补齐 v1.29.15 / v1.32.8 / v1.33.4 全部版本（逐 minor 升级会拉取中间版本），**必须先把对应镜像推入私有仓库**，否则升级失败。**注意：kk 升级时不会自动升级 coredns**（实测确认）。
+4. **数据库一致性**：QKE 平台升级与 k8s 升级后，需保证平台数据库（qke_db_cluster.kubernetes_version、qke_db_component.k8s_versions、qke_db_version.compatibility_k8s）中的版本字段与实际一致，控制台才显示正确版本；只改版本字段，不动状态机字段。
+5. **维护窗口**：部分操作（如 pause 升级需重启 containerd）会中断节点业务，需安排在维护窗口执行。
+6. **备份先行**：每个升级阶段前都需备份（etcd 快照、kubeadm/kubelet 配置、组件镜像、数据库）。
+7. **离线环境**：所有二进制与镜像需在互联网环境准备后导入真实环境，注意架构（amd64/arm64）一致；镜像保存/推送由青云专业人员处理（见 §2.1），勿用 docker save/load（会丢失多架构）。
+8. **installer 包备份**：更新 `qke-installer-v3.4.0.tar.gz` 前必须备份原始包（`.20260923` 备份**必须保持不变**），避免覆盖。
+9. **KSE 4.1.2 场景（测试环境 B，后续补充）**：若集群安装 KSE 4.1.2，升级 k8s 后需核对 KSE 组件 `k8s_versions` 兼容性并验证 KSE 功能；KSE 安装/升级可能被 k8s 版本兼容性拦截（`CurrentKSENoUpgradeable`）。当前方案先处理无 KSE 情况。
 
 ---
 
@@ -672,7 +671,9 @@ cd /opt/qingcloud/qke/qke-installer
 ./kk upgrade -f config-sample.yaml --skip-pull-images --skip-dependency-check
 ```
 
-**etcd 升级类**（本次未做，如需可参考）：
+**etcd 升级（可选升级项，非必须）**：
+
+> k8s v1.33.4 可使用 etcd v3.5.13（满足最低要求 3.5.11，无兼容性风险，详见 [etcd-k8s-1.33-support-report.md](../refs/etcd-k8s-1.33-support-report.md)）；升级到 v3.5.24 为**可选操作**，是否执行由用户/运维决定。若执行：
 
 ```bash
 # 每节点：停 etcd → 换二进制 → 起 etcd → 查健康

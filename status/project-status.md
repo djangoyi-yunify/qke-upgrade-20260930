@@ -78,6 +78,7 @@
 - [x] 第 55 轮迭代：§8.2 回退条件扩展"不兼容"覆盖范围——业务应用、平台组件（QKE/calico/csi-qingcloud）、第三方组件/中间件、节点基础设施（OS/内核/驱动）
 - [x] 第 56 轮迭代：§8.6 新增"① 还原 etcd 数据"（回退 k8s minor 版本时建议执行）——子 agent 调研生成 [refs/etcd-restore-on-rollback-report.md](../refs/etcd-restore-on-rollback-report.md)（结论：k8s 官方不支持跨 minor 降级，建议默认还原 etcd 数据；含 KEP-4330/GKE 依据、数据还原 vs 版本回退区别、etcdutl snapshot restore 步骤）；原步骤顺延为 ②-⑦；§8.4 回退原则/§8.1① 快照说明/§8.5 涉及组件同步补充 etcd 数据还原
 - [x] 第 57 轮迭代：§8.6 删除"⑥ 回退 etcd 版本"（本项目 etcd 不升级，无需回退版本）；"⑦ 回退数据库字段"改为 ⑥ 且只保留 qke_db_cluster（实际升级步骤只改该表）；§8.5 同步去掉"etcd 版本（本项目不涉及）"
+- [x] 第 58 轮迭代：去掉 §9 风险 #2"etcd 版本"——子 agent 调研生成 [refs/etcd-k8s-1.33-support-report.md](../refs/etcd-k8s-1.33-support-report.md)（结论：etcd v3.5.13 满足 k8s v1.33.4 要求 ≥3.5.11，无兼容性风险；kubekey 默认 3.5.24 只是默认部署版本非最低要求）；§10.3 etcd 升级命令标注为"可选升级项（非必须）"；§9 风险重编号 2-9
 - [ ] 收集缺失信息（生产环境、问题清单等）
 - [ ] 按提纲迭代撰写升级方案（骨架→内容，多轮迭代）
 - [ ] 整理升级过程中遇到的问题到 issues-log
