@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 56 轮：§8.6 新增"① 还原 etcd 数据"（回退 k8s minor 版本时建议执行，子 agent 调研生成 [refs/etcd-restore-on-rollback-report.md](../refs/etcd-restore-on-rollback-report.md)），原步骤顺延为 ②-⑦；§8.4/§8.1①/§8.5 同步补充 etcd 数据还原说明）
+> **状态**：迭代中（第 57 轮：§8.6 删除"⑥ 回退 etcd 版本"（本项目 etcd 不升级，无需回退版本）；"⑦ 回退数据库字段"改为 ⑥ 且只保留 qke_db_cluster；§8.5 同步去掉"etcd 版本（本项目不涉及）"）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -491,7 +491,7 @@ kubectl get pod -A -owide | grep -v Running
 
 ### 8.5 回退涉及组件
 
-kube-apiserver、kube-controller-manager、kube-scheduler、kube-proxy、kubelet、CoreDNS、kubeadm、**etcd 数据（还原，见 §8.6①）**、etcd 版本（本项目不涉及）、数据库字段。
+kube-apiserver、kube-controller-manager、kube-scheduler、kube-proxy、kubelet、CoreDNS、kubeadm、**etcd 数据（还原，见 §8.6①）**、数据库字段。
 
 ### 8.6 回退步骤（参考 jinke 方案，需按本项目各阶段确认）
 
@@ -534,13 +534,9 @@ kubectl edit ds -n kube-system kube-proxy
 kubectl -n kube-system set image deployment coredns coredns=<registry>/coredns/coredns:<旧版本>
 ```
 
-**⑥ 回退 etcd 版本**（若已升级；本项目 etcd 未升级，无需执行）
+**⑥ 回退数据库字段**（若已调整）
 
-从 installer 包取旧版本压缩包解包替换，逐节点滚动回退。
-
-**⑦ 回退数据库字段**（若已调整）
-
-还原 qke_db_cluster 的 k8s 版本字段、qke_db_component.k8s_versions 等，保证平台状态与回退后的实际版本一致。
+还原 qke_db_cluster 的 k8s 版本字段，保证平台状态与回退后的实际版本一致。
 
 ### 8.7 回退后检查
 
