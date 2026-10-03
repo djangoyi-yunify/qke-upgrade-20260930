@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 65 轮：§1.5 qke-installer 下载源与私有 OCI 注册服务的值改为"待确认"，青云公有云环境默认值移入说明栏）
+> **状态**：迭代中（第 66 轮：§1.5 去掉"注意"行（默认值说明已并入说明栏）与"生产环境：待确认"行）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -72,10 +72,6 @@
 | qke-cli | 随 QKE 平台安装，位于 `/opt/qingcloud/qke/bin/qke-cli` | QKE 平台组件之一 |
 | qke-installer 下载源 | **待确认** | 青云公有云环境默认值：`https://qkeplus.pek3b.qingstor.com/qke-installer-v3.4.0.tar.gz`（即 `conf.ini [installer] url`；存放于私有对象存储 qingstor.com bucket `qkeplus`） |
 | 私有 OCI 注册服务 | **待确认** | 青云公有云环境默认值：`registry.qingcloud.com`，project `kubesphere`（存放控制面镜像 v1.29.15 / v1.32.8 / v1.33.4 × 4 组件，共 12 个） |
-
-> **注意**：以上为青云公有云环境（qke-artifacts 资源包）的默认值；真实环境若不同，需按实际环境替换。
-
-**生产环境**：待确认（集群拓扑、业务影响、维护窗口、参与人员）。
 
 ---
 
