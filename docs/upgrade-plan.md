@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 52 轮：§7.1 新增问题——Pod 长时间 Terminating（如 kube-proxy，升级后出现），拷贝 [refs/kube-proxy-terminating-troubleshooting.md](../refs/kube-proxy-terminating-troubleshooting.md) 并登记核对/定位方法与处理方法）
+> **状态**：迭代中（第 53 轮：§8 回退方案重构——新增 §8.1 升级前备份（回退的基础，按真实操作顺序列出完整备份流程），后续小节重编号 8.2-8.7）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -424,36 +424,76 @@ kubectl get pod -A -owide | grep -v Running
 
 ## 8. 回退方案（整体）
 
-> 本节为整体回退原则与通用步骤。
+> 本节为整体回退原则与通用步骤。**回退以升级前备份为基础**，备份步骤与命令见 §8.1；回退步骤见 §8.6。
 
-### 8.1 回退条件
+### 8.1 升级前备份（回退的基础）
+
+> 备份在**每次升级操作前**执行（各阶段升级步骤中已引用 §10.3 备份类）；此处按真实操作顺序列出完整备份流程，避免零散命令遗漏。
+
+**① 备份 etcd 快照**（所有 master 节点执行；etcd 开启 TLS 时需带证书参数）
+
+```bash
+ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
+  --cacert=<ca.pem> --cert=<node.pem> --key=<node-key.pem> \
+  snapshot save /data/var/backups/etcd-snapshot-$(date +%F-%H%M%S).db
+```
+
+**② 备份 kubeadm / kubelet 配置**（configmap 与节点文件）
+
+```bash
+# configmap（集群内源配置）
+kubectl -n kube-system get cm kubeadm-config -o yaml > kubeadm-config.yaml
+kubectl -n kube-system get cm kubelet-config -o yaml > kubelet-config.yaml
+
+# 节点文件（各节点）
+cp /etc/kubernetes/kubeadm-config.yaml /etc/kubernetes/kubeadm-config.yaml.bak
+cp /var/lib/kubelet/config.yaml /var/lib/kubelet/config.yaml.bak
+```
+
+**③ 备份组件二进制与清单**
+
+```bash
+cp /usr/local/bin/kube* /data/backup/
+cp /etc/kubernetes/manifests/* /data/backup/
+```
+
+**④ 备份数据库（qkeplus 库）**（专业人员操作；涉及平台版本/组件记录调整时执行）
+
+**⑤ 记录升级前基线**（便于回退后核对）
+
+```bash
+kubectl get nodes -o wide
+kubectl get pod -A -owide | grep -v Running
+```
+
+### 8.2 回退条件
 
 - 升级过程中遇到严重问题，到计划时间仍未解决，则回退；
 - 待确认：本项目回退触发条件与时间点。
 
-### 8.2 回退计划
+### 8.3 回退计划
 
 - 回退预计耗时 2 小时（参考 jinke 方案）；
 - 待确认：本项目回退耗时预估。
 
-### 8.3 回退原则
+### 8.4 回退原则
 
 - kubeadm 升级失败时会**自动回滚**（kubeadm 内部机制）；
 - 升级完成后如需回退，通过**替换组件镜像及二进制**方式将 k8s 版本回退到低版本；
 - **回退版本不超过 3 个大版本**（kubeadm 支持范围）；
-- 回退前提：升级前备份（etcd 快照、kubeadm/kubelet 配置、组件镜像、数据库）完整。
+- 回退前提：升级前备份（etcd 快照、kubeadm/kubelet 配置、组件镜像、数据库）完整（见 §8.1）。
 
-### 8.4 回退涉及组件
+### 8.5 回退涉及组件
 
 kube-apiserver、kube-controller-manager、kube-scheduler、kube-proxy、kubelet、CoreDNS、kubeadm、etcd、数据库字段。
 
-### 8.5 回退步骤（参考 jinke 方案，需按本项目各阶段确认）
+### 8.6 回退步骤（参考 jinke 方案，需按本项目各阶段确认）
 
-**① 回退 master 组件版本（所有 master 节点执行）**
+**① 回退 master 组件版本**（所有 master 节点执行）
 
 进入 `/etc/kubernetes/manifests` 目录，将 kube-apiserver / kube-controller-manager / kube-scheduler 三个组件的镜像替换为待回退版本，kubelet 会自动重启对应静态 Pod。
 
-**② 回退 kubelet 版本（所有 worker 节点执行）**
+**② 回退 kubelet 版本**（所有 worker 节点执行）
 
 ```bash
 systemctl stop kubelet
@@ -483,7 +523,7 @@ kubectl -n kube-system set image deployment coredns coredns=<registry>/coredns/c
 
 还原 qke_db_cluster 的 k8s 版本字段、qke_db_component.k8s_versions 等，保证平台状态与回退后的实际版本一致。
 
-### 8.6 回退后检查
+### 8.7 回退后检查
 
 按 §6 验证清单检查（节点版本应为回退目标版本）。
 

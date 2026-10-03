@@ -73,6 +73,7 @@
 - [x] 第 50 轮迭代：§7.1 新增问题——QKE 控制台不支持跨 2 个以上 minor 版本 k8s 升级，处理方法：严格按照 2 个以内 minor 版本升级
 - [x] 第 51 轮迭代：§7.1 新增问题——calico-node 长期 CrashLoopBackOff（`already using IPv4 Address`）；子 agent 调研生成 [refs/calico-node-ipv4-conflict-report.md](../refs/calico-node-ipv4-conflict-report.md)（原因分析、`pkill runsvdir` 评估=粗暴重启不解决根因、推荐处理方法、离线注意事项），登记核对/定位方法与处理方法
 - [x] 第 52 轮迭代：§7.1 新增问题——Pod 长时间 Terminating（如 kube-proxy，升级后出现）；拷贝 [refs/kube-proxy-terminating-troubleshooting.md](../refs/kube-proxy-terminating-troubleshooting.md)（根因=cgroup freezer 冻结孤儿 runc init，解法=echo THAWED 解冻），登记核对/定位方法与处理方法（含升级前 drain 预防）
+- [x] 第 53 轮迭代：§8 回退方案重构——新增 §8.1 升级前备份（回退的基础，按真实操作顺序列出完整备份流程：etcd 快照→kubeadm/kubelet 配置→组件二进制与清单→数据库→基线记录），后续小节重编号 8.2-8.7（用户已确认初稿）
 - [ ] 收集缺失信息（生产环境、问题清单等）
 - [ ] 按提纲迭代撰写升级方案（骨架→内容，多轮迭代）
 - [ ] 整理升级过程中遇到的问题到 issues-log
