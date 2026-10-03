@@ -13,6 +13,7 @@
 | [kube-proxy-terminating-troubleshooting.md](kube-proxy-terminating-troubleshooting.md) | 故障排查记录 | ⭐ **Pod 长时间 Terminating 故障排查与处理记录**（升级后 kube-proxy-9crxf 卡 Terminating，供 upgrade-plan §7.1 引用）：根因=cgroup freezer 冻结孤儿 `runc init` 进程（STAT `Dsl` + WCHAN `refrigerator`），解法=`echo THAWED > .../freezer.state` 解冻；含排查步骤、预防措施（升级前 drain 节点） |
 | [kubekey-upgrade-failure-rollback-report.md](kubekey-upgrade-failure-rollback-report.md) | 调研报告 | ⭐ **kubekey（kk）升级失败是否自动回滚调研报告**（子 agent 调研，供 upgrade-plan §8.4 修正引用）：结论——**kk 升级失败不会自动回滚**，失败即停在失败步骤，需人工排查/重试/人工回退；含 v3.1.12 源码证据（升级 pipeline 无回滚模块、任务未注册 Rollback）、kubeadm 单节点内控制面组件"尽力而为"回滚与 kk 多节点编排的区别、§8.4 表述建议 |
 | [etcd-restore-on-rollback-report.md](etcd-restore-on-rollback-report.md) | 调研报告 | ⭐ **回退 k8s 版本时是否需要还原 etcd 数据调研报告**（子 agent 调研，供 upgrade-plan §8.6① 引用）：结论——回退 k8s minor 版本时**建议默认还原 etcd 数据**（k8s 官方不支持跨 minor 降级，新版本可能写入旧版本无法解析的数据）；含 KEP-4330/GKE 官方博客依据、etcd 数据还原 vs 版本回退的区别、还原操作步骤（etcdutl snapshot restore）、注意事项 |
+| [etcd-k8s-1.33-support-report.md](etcd-k8s-1.33-support-report.md) | 调研报告 | ⭐ **k8s v1.33.4 对 etcd 版本要求的调研报告**（子 agent 调研，供 upgrade-plan 风险提示/附录修订引用）：结论——**etcd v3.5.13 满足 k8s v1.33.4 要求（≥3.5.11），无兼容性风险**；"kubekey 默认 3.5.24 vs 本项目 3.5.13"不构成风险（风险提示可去掉），附录 etcd 升级命令应标注为**可选升级项**；含官方文档最低推荐 3.5.11+、kubeadm v1.33.4 源码 MinExternalEtcdVersion=3.5.11-0 证据、后续 1.33.x 补丁提升到 3.5.24 的注意事项 |
 
 ## 项目外参考资料（只读引用，不在本项目目录内）
 
