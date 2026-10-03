@@ -61,3 +61,10 @@
 3. **执行具体的升级步骤**（三段式）。
 
 > 第 2 步的必要性见 §2（kubekey 3.1.7 不支持 1.33.4，必须换 3.1.12）。
+
+## 9. 为什么 KSE 4.1.2 场景采用数据库绕过方式升级 QKE 平台
+
+- QKE v3.3.0 实例安装 KSE 4.1.2 后，QKE web 控制台报兼容性错误，无法升级到 QKE v3.4.0；
+- 但 QKE v3.4.0 **实际兼容** KSE 4.1.2，报错是**平台升级检查代码的 bug**（DependencyCheck 误判）；
+- 因此采用**数据库绕过**：更新 `qke_db_cluster` 表清空 `kubesphere_version` / `qkcp_version`，让平台误以为未装 KSE，完成升级后再恢复原值（**专业人员操作**，SQL 见 [upgrade-plan.md](upgrade-plan.md) §7.1）；
+- 真实环境需区分两种情况：① 未安装 KSE（正常升级）；② 安装 KSE 4.1.2（数据库绕过）。

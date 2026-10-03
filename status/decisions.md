@@ -105,6 +105,17 @@
   - 真实环境升级前**仍建议**检查并清理 k8s 1.33 已移除的 feature-gate（如 `TTLAfterFinished`、`ExpandCSIVolumes`），残留会导致新 kube-apiserver/kubelet 拒绝启动（检查/清理位置见 §6.1④）。
 - **状态**：已决策（用户提供，2026-09-30）。
 
+### D-011：KSE 4.1.2 场景采用数据库绕过方式升级 QKE 平台
+
+- **日期**：2026-09-30
+- **决策**：QKE v3.3.0 实例安装 KSE 4.1.2 时，QKE web 控制台报兼容性错误，无法升级到 QKE v3.4.0；采用**数据库绕过**方式：
+  1. 备份原值：`SELECT cluster_id, kubesphere_version, qkcp_version FROM qke_db_cluster WHERE cluster_id='cl-xxxxx';`
+  2. 清空字段（让平台误以为未装 KSE，DependencyCheck 放行）：`UPDATE qke_db_cluster SET kubesphere_version='', qkcp_version='' WHERE cluster_id='cl-xxxxx';`
+  3. 升级完成后恢复原值：`UPDATE qke_db_cluster SET kubesphere_version='<原值>', qkcp_version='<原值>' WHERE cluster_id='cl-xxxxx';`
+- **理由**：QKE v3.4.0 **实际兼容** KSE 4.1.2，报错是**平台升级检查代码的 bug**（DependencyCheck 误判）；数据库绕过让平台误以为未装 KSE，完成升级后再恢复原值。
+- **真实环境两种情况**：① 未安装 KSE（正常升级）；② 安装 KSE 4.1.2（数据库绕过）。
+- **状态**：已决策（用户提供，2026-09-30）；**专业人员操作**（数据库）。
+
 ## 待决策事项
 
 - （暂无）

@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 62 轮：前置检查引用改为内联检查项（方案 B）——§3.1/§4.1 第 2 步、§5.1① 去掉"见 §10.3 检查类"；§10.3 检查类标注为命令速查）
+> **状态**：迭代中（第 63 轮：KSE 4.1.2 场景处理——§3.1 新增"KSE 情况处理"步骤（区分有/无 KSE 两种情况）；§7.1 新增 KSE 兼容性错误问题（数据库绕过方法）；§9 风险 #9 更新；test-environment §3.1 / decisions-rationale §9 / decisions D-011 / issues-log #5 同步登记）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -133,12 +133,15 @@
 1. **备份**（见 §8.1 升级前备份）；
 2. **前置检查**：节点状态、系统组件、pod 状态、资源余量；
 3. **控制台升级前检查**（QKE 平台升级与 k8s 版本升级通用）：web 控制台显示正常状态；`kubectl version` 与 `kubectl get nodes` 显示的 k8s 版本一致；**所有节点 k8s 版本一致**；kube-system pod 无异常；
-4. 进入 **集群运维 / 升级检查**；
-5. 界面提示"**发现新集群版本**"；
-6. 在**第一个下拉框**中选择"**QKE v3.4.0**"；
-7. **不勾选**"**升级 K8s**"复选框（保持 k8s v1.27.10 不变）；
-8. 点击"**立即升级**"，等待升级完成（实测耗时 **2 分 30 秒**）；
-9. **升级后验证**（命令见 §10.3 验证类）：
+4. **KSE 情况处理**（真实环境需区分两种情况）：
+   - **情况一：qke 实例未安装 KSE**——直接进入下一步，正常升级；
+   - **情况二：qke 实例安装了 KSE 4.1.2**——QKE web 控制台报兼容性错误，无法升级到 QKE v3.4.0（QKE v3.4.0 实际兼容 KSE 4.1.2，这是平台升级检查代码的 bug）。需先执行数据库操作（**专业人员操作**）清空 `kubesphere_version` / `qkcp_version`，让平台误以为未装 KSE，完成升级后再恢复原值（SQL 见 §7.1）；
+5. 进入 **集群运维 / 升级检查**；
+6. 界面提示"**发现新集群版本**"；
+7. 在**第一个下拉框**中选择"**QKE v3.4.0**"；
+8. **不勾选**"**升级 K8s**"复选框（保持 k8s v1.27.10 不变）；
+9. 点击"**立即升级**"，等待升级完成（实测耗时 **2 分 30 秒**）；
+10. **升级后验证**（命令见 §10.3 验证类）：
    - qke-cli 版本升级为 **v3.4.0-patch.1**；
    - installer 内 kk 版本为 **v3.1.12**（更新后的 installer 包已生效）；
    - k8s 版本保持 **v1.27.10** 不变；
@@ -420,6 +423,28 @@ kubectl get pod -A -owide | grep -v Running
 - **核对/定位方法**：`crictl ps -a` 查不到容器 + `ps -ef` 看到孤儿 `runc init` → containerd 丢失容器跟踪；`kill -9` 无效时用 `ps -o pid,ppid,stat,wchan:30,cmd -p <pid>` 查看，STAT=`Dsl` + WCHAN=`refrigerator` → 进程被 cgroup freezer 冻结（详见 [kube-proxy-terminating-troubleshooting.md](../refs/kube-proxy-terminating-troubleshooting.md)）；
 - **处理方法**：`echo THAWED > .../freezer.state` 解冻被冻结的进程 → 排队的 SIGKILL 立即生效 → cgroup 自动清理；必要时 `systemctl restart kubelet` 完成收尾；**预防**：升级前先 `kubectl drain` 节点，避免容器在 containerd 重启时被"孤儿化"。
 
+**QKE 实例安装 KSE 4.1.2 时，QKE web 控制台报兼容性错误，无法升级到 QKE v3.4.0**
+
+- **核对/定位方法**：`SELECT kubesphere_version, qkcp_version FROM qke_db_cluster WHERE cluster_id='cl-xxxxx';`（非空即安装了 KSE）；QKE web 控制台报兼容性错误；
+- **处理方法**（**专业人员操作**，数据库绕过——QKE v3.4.0 实际兼容 KSE 4.1.2，报错是平台升级检查代码的 bug）：
+  - ① 备份（记下原值，升级后要恢复）：
+    ```sql
+    SELECT cluster_id, kubesphere_version, qkcp_version
+    FROM qke_db_cluster WHERE cluster_id = 'cl-xxxxx';
+    ```
+  - ② 清空（让平台误以为未装 KSE，DependencyCheck 放行）：
+    ```sql
+    UPDATE qke_db_cluster
+    SET kubesphere_version = '', qkcp_version = ''
+    WHERE cluster_id = 'cl-xxxxx';
+    ```
+  - ③ 升级完成后恢复原值：
+    ```sql
+    UPDATE qke_db_cluster
+    SET kubesphere_version = '<原值>', qkcp_version = '<原值>'
+    WHERE cluster_id = 'cl-xxxxx';
+    ```
+
 ---
 
 ## 8. 回退方案（整体）
@@ -556,7 +581,7 @@ kubectl -n kube-system set image deployment coredns coredns=<registry>/coredns/c
 6. **备份先行**：每个升级阶段前都需备份（etcd 快照、kubeadm/kubelet 配置、组件镜像、数据库）。
 7. **离线环境**：所有二进制与镜像需在互联网环境准备后导入真实环境，注意架构（amd64/arm64）一致；镜像保存/推送由青云专业人员处理（见 §2.1），勿用 docker save/load（会丢失多架构）。
 8. **installer 包备份**：更新 `qke-installer-v3.4.0.tar.gz` 前必须备份原始包（`.20260923` 备份**必须保持不变**），避免覆盖。
-9. **KSE 4.1.2 场景（测试环境 B，后续补充）**：若集群安装 KSE 4.1.2，升级 k8s 后需核对 KSE 组件 `k8s_versions` 兼容性并验证 KSE 功能；KSE 安装/升级可能被 k8s 版本兼容性拦截（`CurrentKSENoUpgradeable`）。当前方案先处理无 KSE 情况。
+9. **KSE 4.1.2 场景（测试环境 B，后续补充）**：若集群安装 KSE 4.1.2，QKE v3.4.0 实际兼容 KSE 4.1.2，但 QKE web 控制台升级检查代码有 bug 会误报兼容性错误，无法升级到 QKE v3.4.0——需数据库绕过（清空 `kubesphere_version` / `qkcp_version`，升级后恢复，见 §7.1）；升级 k8s 后需核对 KSE 组件 `k8s_versions` 兼容性并验证 KSE 功能；KSE 安装/升级可能被 k8s 版本兼容性拦截（`CurrentKSENoUpgradeable`）。当前方案先处理无 KSE 情况。
 
 ---
 

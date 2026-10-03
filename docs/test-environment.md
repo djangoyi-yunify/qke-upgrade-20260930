@@ -131,6 +131,10 @@
 
 ## 3. 测试环境 B：安装 KSE 4.1.2（后续处理）
 
-- 待准备：QKE 实例（安装 KSE 4.1.2）的 master1 IP、拓扑、组件信息；
-- 待确认：KSE 4.1.2 场景下升级 k8s 的差异点（KSE 组件兼容性、`qke_db_component.k8s_versions` 调整、KSE 功能验证等）；
+### 3.1 已发现的问题（QKE 平台升级 3.3.0 → 3.4.0）
+
+- **现象**：QKE v3.3.0 实例安装 KSE 4.1.2 后，无法通过 QKE web 控制台升级到 QKE v3.4.0，控制台报兼容性错误；
+- **原因**：QKE v3.4.0 实际兼容 KSE 4.1.2，报错是**平台升级检查代码的 bug**（DependencyCheck 误判）；
+- **绕过方法**（**专业人员操作**，数据库）：更新 `qke_db_cluster` 表，清空 `kubesphere_version` / `qkcp_version` 让平台误以为未装 KSE，完成升级后再恢复原值（SQL 见 [upgrade-plan.md](upgrade-plan.md) §7.1）；
+- **待确认**：KSE 4.1.2 场景下升级 k8s 的差异点（KSE 组件兼容性、`qke_db_component.k8s_versions` 调整、KSE 功能验证等）；
 - **当前方案先处理无 KSE 情况，KSE 4.1.2 场景后续补充**。
