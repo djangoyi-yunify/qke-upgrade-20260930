@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 54 轮：§8 微调——§8.1④ 强调着重备份表 qke_db_cluster；§8.2 回退条件改为仅业务不兼容才回退；§8.3 改为"预计耗时"去掉待确认；§8.4 去掉"kubeadm 自动回滚"表述，改为"kubekey 升级失败不会自动回滚"（子 agent 调研生成 [refs/kubekey-upgrade-failure-rollback-report.md](../refs/kubekey-upgrade-failure-rollback-report.md)））
+> **状态**：迭代中（第 55 轮：§8.2 回退条件扩展"不兼容"覆盖范围——业务应用、平台组件、第三方组件/中间件、节点基础设施）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -468,7 +468,11 @@ kubectl get pod -A -owide | grep -v Running
 
 ### 8.2 回退条件
 
-- 仅当**业务应用存在不兼容**的情况时，才考虑回退；
+- 仅当升级后存在**不兼容**情况且无法通过排查修复解决时，才考虑回退，例如：
+  - 业务应用不兼容（API 移除/废弃、行为变化导致应用异常）；
+  - 平台组件不兼容（QKE 平台组件、网络插件 calico、存储插件 csi-qingcloud 等）；
+  - 集群上运行的第三方组件/中间件不兼容；
+  - 节点基础设施不兼容（OS、内核、驱动等）。
 - 其他情况下，建议**排查问题并升级到更高版本 k8s**。
 
 ### 8.3 预计耗时
