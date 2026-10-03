@@ -3,7 +3,14 @@
 > **调研对象**：QKE v3.4.0 集群（k8s 已升级到 v1.33.4，离线环境）中 `calico-node-xxxx` pod 长期 **CrashLoopBackOff**，日志提示 `Kubernetes Calico node 'XXXXXXXXXXX' already using IPv4 Address XXXXXXXXX`。
 > **调研内容**：① 报错原因分析；② 用户当前处理方法 `pkill runsvdir` 评估；③ 推荐处理方法（含命令）；④ 离线 QKE 环境注意事项；⑤ 参考资料。
 > **用途**：供 [docs/upgrade-plan.md](../docs/upgrade-plan.md) §7.1 问题处理登记（核对/定位方法、处理方法），本文件为详细参考。
-> **调研日期**：2026-10-03（基于公开资料与社区案例，未在真实集群实测）。
+> **调研日期**：2026-10-03（基于公开资料与社区案例；2026-10-03 在测试环境 master1 172.22.8.7 实测核对，并更正 calicoctl 获取方式）。
+
+> **实测核对（2026-10-03，测试环境 master1 172.22.8.7）**：
+> - calico 版本 **v3.27.4**（`registry.qingcloud.com/calico/node:v3.27.4`），Kubernetes datastore（CRD，cluster type `k8s,bgp,kubeadm,kdd`）；
+> - `IP_AUTODETECTION_METHOD=can-reach=$(NODEIP)`（非默认 first-found）；
+> - **calico-node 容器内无 calicoctl**（`/usr/local/bin` 仅有 runit 系列），`kubectl exec ... calicoctl` 报 `executable file not found in $PATH`；
+> - 主机 `/usr/local/bin/calicoctl`（v3.27.4）可用：`calicoctl node status` BGP 正常、`calicoctl get node` 6 节点；
+> - 当前该集群 calico-node 全部 Running（无 CrashLoopBackOff）。
 
 ---
 
@@ -95,14 +102,22 @@ kubectl describe pod -n kube-system calico-node-xxxx
 
 ### 3.2 第二步：检查 calico 节点状态与 IPAM
 
-```bash
-# 方式 A：calicoctl（calico-node 镜像内置，可 exec 进容器执行）
-kubectl exec -n kube-system calico-node-xxxx -- calicoctl node status
-kubectl exec -n kube-system calico-node-xxxx -- calicoctl get node
-kubectl exec -n kube-system calico-node-xxxx -- calicoctl ipam show
-kubectl exec -n kube-system calico-node-xxxx -- calicoctl ipam check
+> ⚠️ **重要更正（2026-10-03 实测）**：**calicoctl 不在 calico-node 镜像内**。自 Calico **v3.20** 起，calicoctl 已从 `calico/node` 镜像中移除，不再随镜像内置；`kubectl exec -n kube-system calico-node-xxxx -- calicoctl ...` 会报 `exec: "calicoctl": executable file not found in $PATH`。calicoctl 需**单独安装**（独立二进制，或使用合并镜像 `calico/calico` 以容器方式运行），且版本须与集群 calico 版本一致。
+> **测试环境实测（master1 172.22.8.7，calico v3.27.4）**：calico-node 容器内无 calicoctl（`/usr/local/bin` 仅有 runit 系列）；主机 `/usr/local/bin/calicoctl`（v3.27.4）可用，`calicoctl node status` / `calicoctl get node` 正常。
 
-# 方式 B：kubectl 直接查看 calico CRD（Kubernetes datastore 场景）
+```bash
+# 方式 A：calicoctl（独立二进制，在节点主机上执行；不在 calico-node 容器内）
+#   - 前提：主机已安装与集群版本一致的 calicoctl（如 /usr/local/bin/calicoctl）
+#   - 前提：主机可访问集群（kubeconfig，或 DATASTORE_TYPE=kubernetes + KUBECONFIG）
+calicoctl node status
+calicoctl get node
+calicoctl ipam show
+calicoctl ipam check
+
+# 方式 A'：若主机无 calicoctl 二进制，可用合并镜像 calico/calico 以容器方式运行（需离线环境已有该镜像）
+# docker run --rm -v /root/.kube:/root/.kube calico/calico:v3.27.4 calicoctl node status
+
+# 方式 B：kubectl 直接查看 calico CRD（Kubernetes datastore 场景，无需 calicoctl）
 kubectl get nodes -o wide
 kubectl get node -o yaml <nodeName>          # 查看 projectcalico.org/IPv4Address 等注解
 kubectl get ippool -o yaml                    # 查看 IP 池
@@ -122,14 +137,16 @@ kubectl get ipamhandle -A -o yaml             # 查看 IPAM 分配句柄（若 C
 
 ### 3.4 第四步：清理残留记录（确认是残留后再执行）
 
+> calicoctl 在**节点主机**上执行（不在 calico-node 容器内，见 §3.2 更正）。
+
 ```bash
 # 删除已下线节点的 calico Node 资源（会连带清理其 WorkloadEndpoint/HostEndpoint/IP 等子资源）
 # ⚠️ 仅当该节点确实已下线/不再服务时执行，否则会影响在网节点
-kubectl exec -n kube-system calico-node-xxxx -- calicoctl delete node <已下线节点名>
+calicoctl delete node <已下线节点名>
 
 # 释放 IPAM 中残留的 IP 分配（仅用于"未干净删除的端点"遗留地址）
 # ⚠️ 不会从仍在使用的端点移除 IP，务必先确认该 IP 无实际使用者
-kubectl exec -n kube-system calico-node-xxxx -- calicoctl ipam release --ip=<冲突IP>
+calicoctl ipam release --ip=<冲突IP>
 ```
 
 > 参考：官方 [Decommission a node](https://docs.tigera.io/calico/latest/operations/decommissioning-a-node) 明确将 "receiving an error about an IP address already in use" 列为需要手动 decommission 节点的场景之一。
@@ -168,14 +185,14 @@ kubectl get pod -n kube-system -o wide | grep calico-node
 kubectl logs -n kube-system calico-node-<新pod> -f
 ```
 
-**验证通过标准**：pod 进入 `Running` 且 `1/1 Ready`；日志不再出现 `already using the IPv4 address`；`calicoctl node status` 显示 BGP 正常建立。
+**验证通过标准**：pod 进入 `Running` 且 `1/1 Ready`；日志不再出现 `already using the IPv4 address`；主机上 `calicoctl node status` 显示 BGP 正常建立。
 
 ---
 
 ## 4. 注意事项（离线 QKE 环境）
 
 1. **只读优先、修改需确认**：按项目约定，对真实集群只做只读操作；§3.4/§3.5 的修改类操作（删除 node 资源、释放 IP、改 DaemonSet env）**必须事先逐次征得用户同意**。
-2. **calicoctl 获取方式**：离线环境节点上可能没有独立 calicoctl 二进制；calico-node 镜像内置 calicoctl，可用 `kubectl exec` 进容器执行；也可直接用 `kubectl` 查看 calico CRD（Kubernetes datastore 场景）。
+2. **calicoctl 获取方式（重要更正）**：**calico-node 镜像不内置 calicoctl**（自 v3.20 起已移除），不能用 `kubectl exec` 进容器执行。离线环境需**预先将 calicoctl 二进制放到节点主机**（版本与集群 calico 一致，如测试环境 `/usr/local/bin/calicoctl` v3.27.4），或使用离线已有的合并镜像 `calico/calico` 以容器方式运行；也可直接用 `kubectl` 查看 calico CRD（Kubernetes datastore 场景，无需 calicoctl）。
 3. **数据存储类型**：先确认 calico 使用 **Kubernetes datastore（CRD）** 还是 **etcd datastore**。QKE 通常为 Kubernetes datastore，此时 Node 资源即 CRD，`kubectl get node`（calico CRD）与 `kubectl get nodes`（k8s 节点）是两套对象，注意区分。
 4. **平台托管组件**：QKE 平台可能对 calico DaemonSet/配置有**回写/纳管**逻辑，直接 `kubectl edit ds` 修改 env 可能被平台覆盖；修改前确认平台是否纳管，必要时通过 QKE 控制台/平台配置修改。
 5. **离线限制**：无法访问互联网拉取新镜像/文档，**不要尝试更换 calico 镜像或升级 calico 版本来"修复"**；所有操作基于现有镜像与二进制。
@@ -187,6 +204,7 @@ kubectl logs -n kube-system calico-node-<新pod> -f
 ## 5. 参考资料
 
 ### 官方文档
+- [Calico: Install calicoctl](https://docs.tigera.io/calico/latest/operations/calicoctl/install) —— calicoctl 为**独立工具**，需单独安装（二进制或 `calico/calico` 合并镜像容器方式），版本须与集群一致；**v3.20 起不再随 calico-node 镜像内置**
 - [Calico: Configure IP autodetection](https://docs.tigera.io/calico/latest/networking/ipam/ip-autodetection) —— IP 自动检测方法（first-found / can-reach / interface 等）
 - [Calico: Decommission a node](https://docs.tigera.io/calico/latest/operations/decommissioning-a-node) —— 官方明确将 "IP address already in use" 列为需手动 decommission 节点的场景；`calicoctl delete node`
 - [Calico: calicoctl ipam release](https://docs.tigera.io/calico-enterprise/latest/reference/clis/calicoctl/ipam/release) —— 释放 IPAM 残留 IP 的命令与注意事项

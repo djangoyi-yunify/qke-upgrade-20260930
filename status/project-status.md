@@ -81,6 +81,7 @@
 - [x] 第 58 轮迭代：去掉 §9 风险 #2"etcd 版本"——子 agent 调研生成 [refs/etcd-k8s-1.33-support-report.md](../refs/etcd-k8s-1.33-support-report.md)（结论：etcd v3.5.13 满足 k8s v1.33.4 要求 ≥3.5.11，无兼容性风险；kubekey 默认 3.5.24 只是默认部署版本非最低要求）；§10.3 etcd 升级命令标注为"可选升级项（非必须）"；§9 风险重编号 2-9
 - [x] 第 59 轮迭代：§8.6⑥ 回退数据库字段"平台状态"改为"qke 实例状态"
 - [x] 第 60 轮迭代：操作步骤中的备份引用从"§10.3 备份类"改为"§8.1 升级前备份"（严谨备份步骤，方案 A）——§3.1/§4.1 第 1 步、§5.1①、§2 说明同步更新；§10.3 备份类标注"完整备份步骤见 §8.1，此处为命令速查"；§8.1 引言同步更新
+- [x] 第 61 轮迭代：**更正 calico-node 调研报告的 calicoctl 获取方式**——用户反馈 `kubectl exec ... calicoctl` 报 `executable file not found in $PATH`；测试环境（master1 172.22.8.7，calico v3.27.4）实测确认 calicoctl 不在 calico-node 容器内（v3.20+ 已移除），主机 `/usr/local/bin/calicoctl` v3.27.4 可用；报告 §3.2/§3.4/§3.6/§4 与 upgrade-plan §7.1 的 calicoctl 命令改为在节点主机执行，补充官方 Install calicoctl 参考与实测核对说明
 - [ ] 收集缺失信息（生产环境、问题清单等）
 - [ ] 按提纲迭代撰写升级方案（骨架→内容，多轮迭代）
 - [ ] 整理升级过程中遇到的问题到 issues-log

@@ -131,7 +131,7 @@
 **操作步骤**：
 
 1. **备份**（见 §8.1 升级前备份）；
-2. **前置检查**（见 §10.3 检查类）：节点状态、系统组件、pod 状态、资源余量；
+2. **前置检查**：节点状态、系统组件、pod 状态、资源余量；
 3. **控制台升级前检查**（QKE 平台升级与 k8s 版本升级通用）：web 控制台显示正常状态；`kubectl version` 与 `kubectl get nodes` 显示的 k8s 版本一致；**所有节点 k8s 版本一致**；kube-system pod 无异常；
 4. 进入 **集群运维 / 升级检查**；
 5. 界面提示"**发现新集群版本**"；
@@ -174,7 +174,7 @@
 **操作步骤**（每步）：
 
 1. **备份**（见 §8.1 升级前备份）；
-2. **前置检查**（见 §10.3 检查类）：节点状态、系统组件、pod 状态、资源余量；**控制台升级前检查**（见 §3.1 第 3 步）：所有节点 k8s 版本一致；
+2. **前置检查**：节点状态、系统组件、pod 状态、资源余量；**控制台升级前检查**（见 §3.1 第 3 步）：所有节点 k8s 版本一致；
 3. 进入 **集群运维 / 升级检查**；
 4. **勾选**"**升级 K8s**"复选框；
 5. 在下拉框中选择对应的 k8s 版本；
@@ -223,7 +223,7 @@
 
 ### 5.1 升级步骤
 
-**① 备份与前置检查**（备份见 §8.1 升级前备份；前置检查见 §10.3 检查类）。
+**① 备份与前置检查**（备份见 §8.1 升级前备份；前置检查：节点状态、系统组件、pod 状态、资源余量）。
 
 **② 修改 kk 配置文件（升级前）**
 
@@ -412,7 +412,7 @@ kubectl get pod -A -owide | grep -v Running
 
 **calico-node 长期 CrashLoopBackOff：`Calico node 'xxx' already using IPv4 Address xxx`**
 
-- **核对/定位方法**：`kubectl logs -n kube-system calico-node-xxxx --previous` 查看启动日志，确认冲突 IP 与网卡；`kubectl exec -n kube-system calico-node-xxxx -- calicoctl node status` / `calicoctl get node` 检查节点记录与 IPAM（详见 [calico-node-ipv4-conflict-report.md](../refs/calico-node-ipv4-conflict-report.md)）；
+- **核对/定位方法**：`kubectl logs -n kube-system calico-node-xxxx --previous` 查看启动日志，确认冲突 IP 与网卡；在**节点主机**上用 `calicoctl node status` / `calicoctl get node` 检查节点记录与 IPAM（⚠️ **calicoctl 不在 calico-node 容器内**，v3.20+ 需单独安装，测试环境在 `/usr/local/bin/calicoctl` v3.27.4；详见 [calico-node-ipv4-conflict-report.md](../refs/calico-node-ipv4-conflict-report.md)）；
 - **处理方法**：先只读定位根因（残留记录 / 同名不同 IP / 选错网卡），再按根因处理——清理已下线节点残留记录（`calicoctl delete node`）、释放残留 IP（`calicoctl ipam release`）、或修正 IP 自动检测（`IP_AUTODETECTION_METHOD`）；最后 `kubectl delete pod` 由 DaemonSet 重建。**不建议用 `pkill runsvdir`**（只能重启容器，不解决根因，详见报告 §2）。
 
 **Pod 长时间 Terminating（如 kube-proxy，升级后出现）**
