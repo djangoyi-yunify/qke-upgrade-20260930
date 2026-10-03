@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 45 轮：§5.2 阶段特有检查重新组织——去掉 coredns 镜像检查（可选项，移入 §5.1⑧），增加 kubectl version 检查（服务端版本与节点版本一致性）；§5.1⑥ 升级后核对同步增加 kubectl version）
+> **状态**：迭代中（第 46 轮：§6.1 节点与系统组件增加 kubectl version 验证）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -359,6 +359,9 @@ kubectl -n kube-system get cm qke-cluster-config -o jsonpath='{.data.qkeCluster}
 ### 6.1 节点与系统组件
 
 ```bash
+# k8s 版本（服务端版本与节点版本一致）
+kubectl version
+
 # 节点版本与状态（全部 Ready 且版本为目标版本）
 kubectl get nodes -o wide
 
