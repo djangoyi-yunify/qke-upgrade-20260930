@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 42 轮：§4.2/§5.3 给出 kk upgrade 具体命令：`cd /opt/qingcloud/qke/qke-installer && ./kk upgrade -f config-sample.yaml --skip-pull-images --skip-dependency-check`）
+> **状态**：迭代中（第 43 轮：§3.1 去掉"升级包导入"一行——该工作已在前面完成，无需再次提及）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -146,8 +146,6 @@
    - 平台组件（cloud-controller-manager / csi-qingcloud-controller / qke-operator）正常。
 
 > 测试环境实测结果见 [test-environment.md](test-environment.md) §2.2。
-
-**升级包导入**：参考 `/workspace/qke-artifacts/README.md`（qke-installer 文件包更新与导入，见 §2.1）。
 
 **已知事实**：
 
