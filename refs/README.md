@@ -10,6 +10,7 @@
 | [k8s-1.33-coredns-compatibility-report.md](k8s-1.33-coredns-compatibility-report.md) | 调研报告 | ⭐ **k8s v1.33.4 对 coredns 版本要求的调研报告**（子 agent 调研官方源码/文档）：结论——非"必须"但"强烈建议"升级到 v1.12.0；含证据、风险分析、建议 |
 | [feature-gates-cleanup-report.md](feature-gates-cleanup-report.md) | 调研报告 | ⭐ **k8s feature-gates 获取与删除方法调研报告**（子 agent 调研，供 upgrade-plan §5.1⑤ 引用）：显式配置的 5 个位置 + 检查命令、删除操作步骤（含 kubelet-config-1.31 修正、重启说明）、RotateKubeletServerCertificate/TTLAfterFinished/ExpandCSIVolumes 在 1.33 的状态 |
 | [calico-node-ipv4-conflict-report.md](calico-node-ipv4-conflict-report.md) | 调研报告 | ⭐ **calico-node "already using IPv4 Address" CrashLoopBackOff 故障调研报告**（子 agent 调研，供 upgrade-plan §7.1 引用）：原因分析（IPAM/节点记录残留、重复记录、选错网卡等）、`pkill runsvdir` 方法评估（粗暴重启、不解决根因）、推荐处理方法（含命令）、离线 QKE 注意事项 |
+| [kube-proxy-terminating-troubleshooting.md](kube-proxy-terminating-troubleshooting.md) | 故障排查记录 | ⭐ **Pod 长时间 Terminating 故障排查与处理记录**（升级后 kube-proxy-9crxf 卡 Terminating，供 upgrade-plan §7.1 引用）：根因=cgroup freezer 冻结孤儿 `runc init` 进程（STAT `Dsl` + WCHAN `refrigerator`），解法=`echo THAWED > .../freezer.state` 解冻；含排查步骤、预防措施（升级前 drain 节点） |
 
 ## 项目外参考资料（只读引用，不在本项目目录内）
 

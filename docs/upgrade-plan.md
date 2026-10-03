@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 51 轮：§7.1 新增问题——calico-node 长期 CrashLoopBackOff（`already using IPv4 Address`），子 agent 调研生成 [refs/calico-node-ipv4-conflict-report.md](../refs/calico-node-ipv4-conflict-report.md)，登记核对/定位方法与处理方法，不建议 `pkill runsvdir`）
+> **状态**：迭代中（第 52 轮：§7.1 新增问题——Pod 长时间 Terminating（如 kube-proxy，升级后出现），拷贝 [refs/kube-proxy-terminating-troubleshooting.md](../refs/kube-proxy-terminating-troubleshooting.md) 并登记核对/定位方法与处理方法）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -414,6 +414,11 @@ kubectl get pod -A -owide | grep -v Running
 
 - **核对/定位方法**：`kubectl logs -n kube-system calico-node-xxxx --previous` 查看启动日志，确认冲突 IP 与网卡；`kubectl exec -n kube-system calico-node-xxxx -- calicoctl node status` / `calicoctl get node` 检查节点记录与 IPAM（详见 [calico-node-ipv4-conflict-report.md](../refs/calico-node-ipv4-conflict-report.md)）；
 - **处理方法**：先只读定位根因（残留记录 / 同名不同 IP / 选错网卡），再按根因处理——清理已下线节点残留记录（`calicoctl delete node`）、释放残留 IP（`calicoctl ipam release`）、或修正 IP 自动检测（`IP_AUTODETECTION_METHOD`）；最后 `kubectl delete pod` 由 DaemonSet 重建。**不建议用 `pkill runsvdir`**（只能重启容器，不解决根因，详见报告 §2）。
+
+**Pod 长时间 Terminating（如 kube-proxy，升级后出现）**
+
+- **核对/定位方法**：`crictl ps -a` 查不到容器 + `ps -ef` 看到孤儿 `runc init` → containerd 丢失容器跟踪；`kill -9` 无效时用 `ps -o pid,ppid,stat,wchan:30,cmd -p <pid>` 查看，STAT=`Dsl` + WCHAN=`refrigerator` → 进程被 cgroup freezer 冻结（详见 [kube-proxy-terminating-troubleshooting.md](../refs/kube-proxy-terminating-troubleshooting.md)）；
+- **处理方法**：`echo THAWED > .../freezer.state` 解冻被冻结的进程 → 排队的 SIGKILL 立即生效 → cgroup 自动清理；必要时 `systemctl restart kubelet` 完成收尾；**预防**：升级前先 `kubectl drain` 节点，避免容器在 containerd 重启时被"孤儿化"。
 
 ---
 
