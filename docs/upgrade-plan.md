@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 44 轮：§5.1⑤ feature-gates 完善——子 agent 调研生成 [refs/feature-gates-cleanup-report.md](../refs/feature-gates-cleanup-report.md)，主文档改为简洁操作步骤并引用报告）
+> **状态**：迭代中（第 45 轮：§5.2 阶段特有检查重新组织——去掉 coredns 镜像检查（可选项，移入 §5.1⑧），增加 kubectl version 检查（服务端版本与节点版本一致性）；§5.1⑥ 升级后核对同步增加 kubectl version）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -269,6 +269,7 @@ cd /opt/qingcloud/qke/qke-installer
 **⑥ 升级后核对**
 
 ```bash
+kubectl version                                # 服务端版本 v1.33.4（与节点版本一致）
 kubectl get nodes -o wide                      # 全部 Ready 且版本 v1.33.4
 kubectl get pod -A -owide | grep -v Running    # 无异常 pod
 ```
@@ -307,7 +308,8 @@ update qke_db_cluster set kubernetes_version='v1.33.4' where cluster_id='cl-vhm7
 # 1) 准备 coredns v1.12.0 镜像并推入私有仓库
 # 2) 更新 coredns deployment 镜像
 kubectl -n kube-system set image deployment/coredns coredns=<registry>/coredns/coredns:v1.12.0
-# 3) 核对 coredns pod 状态与 DNS 解析
+# 3) 核对 coredns 镜像与 pod 状态、DNS 解析
+kubectl -n kube-system get deploy coredns -o jsonpath='{.spec.template.spec.containers[0].image}'
 kubectl -n kube-system get pods -l k8s-app=kube-dns
 kubectl run -it --rm dns-test --image=<registry>/busybox:latest -- nslookup kubernetes.default
 ```
@@ -321,13 +323,14 @@ kubectl run -it --rm dns-test --image=<registry>/busybox:latest -- nslookup kube
 **阶段特有检查**：
 
 ```bash
-kubectl -n kube-system get deploy coredns -o jsonpath='{.spec.template.spec.containers[0].image}'
+kubectl version                              # 服务端版本 v1.33.4（与节点版本一致）
 kubectl -n kube-system get cm qke-cluster-config -o jsonpath='{.data.qkeCluster}' | grep -A2 kubernetes
 ```
 
 **检查项**：
 
 - 所有节点 Ready 且版本 v1.33.4；
+- `kubectl version` 服务端版本为 v1.33.4，与节点版本一致；
 - kube-system pod 全部 Running，无异常 pod；
 - `qke-cluster-config` 的 `kubernetes.version` 为 v1.33.4、`pre_version` 为 v1.31.2；
 - 数据库 `qke_db_cluster.kubernetes_version` 为 v1.33.4（专业人员操作）。

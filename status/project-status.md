@@ -65,6 +65,7 @@
 - [x] 第 42 轮迭代：§4.2/§5.3 给出 kk upgrade 具体命令（`cd /opt/qingcloud/qke/qke-installer && ./kk upgrade -f config-sample.yaml --skip-pull-images --skip-dependency-check`）
 - [x] 第 43 轮迭代：§3.1 去掉"升级包导入"一行（该工作已在前面完成，无需再次提及）
 - [x] 第 44 轮迭代：§5.1⑤ feature-gates 完善——子 agent 调研生成 [refs/feature-gates-cleanup-report.md](../refs/feature-gates-cleanup-report.md)（获取/删除 feature-gate 方法、1.33 状态、参考资料），主文档改为简洁操作步骤并引用报告；refs/README.md 已登记
+- [x] 第 45 轮迭代：§5.2 阶段特有检查重新组织——去掉 coredns 镜像检查（可选项，移入 §5.1⑧ 步骤3），增加 kubectl version 检查（服务端版本与节点版本一致性）；§5.1⑥ 升级后核对同步增加 kubectl version
 - [ ] 收集缺失信息（生产环境、问题清单等）
 - [ ] 按提纲迭代撰写升级方案（骨架→内容，多轮迭代）
 - [ ] 整理升级过程中遇到的问题到 issues-log
