@@ -11,6 +11,7 @@
 | [feature-gates-cleanup-report.md](feature-gates-cleanup-report.md) | 调研报告 | ⭐ **k8s feature-gates 获取与删除方法调研报告**（子 agent 调研，供 upgrade-plan §5.1⑤ 引用）：显式配置的 5 个位置 + 检查命令、删除操作步骤（含 kubelet-config-1.31 修正、重启说明）、RotateKubeletServerCertificate/TTLAfterFinished/ExpandCSIVolumes 在 1.33 的状态 |
 | [calico-node-ipv4-conflict-report.md](calico-node-ipv4-conflict-report.md) | 调研报告 | ⭐ **calico-node "already using IPv4 Address" CrashLoopBackOff 故障调研报告**（子 agent 调研，供 upgrade-plan §7.1 引用）：原因分析（IPAM/节点记录残留、重复记录、选错网卡等）、`pkill runsvdir` 方法评估（粗暴重启、不解决根因）、推荐处理方法（含命令）、离线 QKE 注意事项 |
 | [kube-proxy-terminating-troubleshooting.md](kube-proxy-terminating-troubleshooting.md) | 故障排查记录 | ⭐ **Pod 长时间 Terminating 故障排查与处理记录**（升级后 kube-proxy-9crxf 卡 Terminating，供 upgrade-plan §7.1 引用）：根因=cgroup freezer 冻结孤儿 `runc init` 进程（STAT `Dsl` + WCHAN `refrigerator`），解法=`echo THAWED > .../freezer.state` 解冻；含排查步骤、预防措施（升级前 drain 节点） |
+| [kubekey-upgrade-failure-rollback-report.md](kubekey-upgrade-failure-rollback-report.md) | 调研报告 | ⭐ **kubekey（kk）升级失败是否自动回滚调研报告**（子 agent 调研，供 upgrade-plan §8.4 修正引用）：结论——**kk 升级失败不会自动回滚**，失败即停在失败步骤，需人工排查/重试/人工回退；含 v3.1.12 源码证据（升级 pipeline 无回滚模块、任务未注册 Rollback）、kubeadm 单节点内控制面组件"尽力而为"回滚与 kk 多节点编排的区别、§8.4 表述建议 |
 
 ## 项目外参考资料（只读引用，不在本项目目录内）
 

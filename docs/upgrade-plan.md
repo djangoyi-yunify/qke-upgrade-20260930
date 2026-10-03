@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 53 轮：§8 回退方案重构——新增 §8.1 升级前备份（回退的基础，按真实操作顺序列出完整备份流程），后续小节重编号 8.2-8.7）
+> **状态**：迭代中（第 54 轮：§8 微调——§8.1④ 强调着重备份表 qke_db_cluster；§8.2 回退条件改为仅业务不兼容才回退；§8.3 改为"预计耗时"去掉待确认；§8.4 去掉"kubeadm 自动回滚"表述，改为"kubekey 升级失败不会自动回滚"（子 agent 调研生成 [refs/kubekey-upgrade-failure-rollback-report.md](../refs/kubekey-upgrade-failure-rollback-report.md)））
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -457,7 +457,7 @@ cp /usr/local/bin/kube* /data/backup/
 cp /etc/kubernetes/manifests/* /data/backup/
 ```
 
-**④ 备份数据库（qkeplus 库）**（专业人员操作；涉及平台版本/组件记录调整时执行）
+**④ 备份数据库（qkeplus 库）**（专业人员操作；涉及平台版本/组件记录调整时执行）。**着重备份表 `qke_db_cluster`**——它记录了 qke 实例的状态，升级过程中的更新动作会改变它存放的数据。
 
 **⑤ 记录升级前基线**（便于回退后核对）
 
@@ -468,17 +468,16 @@ kubectl get pod -A -owide | grep -v Running
 
 ### 8.2 回退条件
 
-- 升级过程中遇到严重问题，到计划时间仍未解决，则回退；
-- 待确认：本项目回退触发条件与时间点。
+- 仅当**业务应用存在不兼容**的情况时，才考虑回退；
+- 其他情况下，建议**排查问题并升级到更高版本 k8s**。
 
-### 8.3 回退计划
+### 8.3 预计耗时
 
-- 回退预计耗时 2 小时（参考 jinke 方案）；
-- 待确认：本项目回退耗时预估。
+- 回退预计耗时 2 小时（参考 jinke 方案）。
 
 ### 8.4 回退原则
 
-- kubeadm 升级失败时会**自动回滚**（kubeadm 内部机制）；
+- **kubekey 升级失败不会自动回滚**：任一阶段失败时 kk 会停在失败步骤，集群可能处于"部分节点已升级"的中间状态，需**人工排查并重试** `kk upgrade`（kk 幂等，可继续完成升级）；若需回退，按 §8.6 回退步骤人工执行（详见 [kubekey-upgrade-failure-rollback-report.md](../refs/kubekey-upgrade-failure-rollback-report.md)）；
 - 升级完成后如需回退，通过**替换组件镜像及二进制**方式将 k8s 版本回退到低版本；
 - **回退版本不超过 3 个大版本**（kubeadm 支持范围）；
 - 回退前提：升级前备份（etcd 快照、kubeadm/kubelet 配置、组件镜像、数据库）完整（见 §8.1）。
