@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 43 轮：§3.1 去掉"升级包导入"一行——该工作已在前面完成，无需再次提及）
+> **状态**：迭代中（第 44 轮：§5.1⑤ feature-gates 完善——子 agent 调研生成 [refs/feature-gates-cleanup-report.md](../refs/feature-gates-cleanup-report.md)，主文档改为简洁操作步骤并引用报告）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -256,18 +256,13 @@ cd /opt/qingcloud/qke/qke-installer
 
 **⑤ feature-gates**
 
-- 获取当前显式配置的 feature-gate；
-- 删除或保留 feature-gate（根据实际情况而定）。若需删除，清理位置：
-  1. configmap `kubeadm-config`：删除 `apiServer/controllerManager/scheduler.extraArgs.feature-gates`；
-  2. configmap `kubelet-config-1.31`：删除 `featureGates`；
-  3. 各节点 `/etc/kubernetes/manifests/kube-{apiserver,controller-manager,scheduler}.yaml` 的 `--feature-gates`；
-  4. 各节点 `/var/lib/kubelet/config.yaml` 的 `featureGates`。
-
-  检查命令：
-  ```bash
-  kubectl -n kube-system get cm kubeadm-config -o yaml | grep -A5 feature-gates
-  kubectl -n kube-system get cm kubelet-config -o yaml | grep -A5 featureGates
-  ```
+- 获取当前显式配置的 feature-gate（检查位置与命令见 [feature-gates-cleanup-report.md](../refs/feature-gates-cleanup-report.md) §2）；
+- 删除或保留 feature-gate（根据实际情况而定）。若需删除，按 [feature-gates-cleanup-report.md](../refs/feature-gates-cleanup-report.md) §3 执行：
+  1. 修改 configmap `kubeadm-config`：删除 `apiServer/controllerManager/scheduler.extraArgs.feature-gates`；
+  2. 修改 configmap `kubelet-config-1.31`：删除 `featureGates`；
+  3. 删除第一个 master 节点 `/etc/kubernetes/kubeadm-config.yaml` 中的 feature-gates 字段；
+  4. 修改各节点 `/etc/kubernetes/manifests/kube-{apiserver,controller-manager,scheduler}.yaml`：删除 `--feature-gates=xxx`；
+  5. 删除各节点 `/var/lib/kubelet/config.yaml` 中的 `featureGates`。
 
 > **注意事项**：如果显式配置的 feature-gate 只有 `RotateKubeletServerCertificate`，则不需要做任何操作。
 
