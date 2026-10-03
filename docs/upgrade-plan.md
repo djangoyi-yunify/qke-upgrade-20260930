@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 50 轮：§7.1 新增问题——QKE 控制台不支持跨 2 个以上 minor 版本 k8s 升级，处理方法：严格按照 2 个以内 minor 版本升级）
+> **状态**：迭代中（第 51 轮：§7.1 新增问题——calico-node 长期 CrashLoopBackOff（`already using IPv4 Address`），子 agent 调研生成 [refs/calico-node-ipv4-conflict-report.md](../refs/calico-node-ipv4-conflict-report.md)，登记核对/定位方法与处理方法，不建议 `pkill runsvdir`）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -409,6 +409,11 @@ kubectl get pod -A -owide | grep -v Running
 
 - **核对/定位方法**：确认升级路径中相邻版本 minor 跨度不超过 2（如 1.27 → 1.29 → 1.31，跨度均为 2 个 minor 以内）；
 - **处理方法**：严格按照 2 个以内 minor 版本升级。
+
+**calico-node 长期 CrashLoopBackOff：`Calico node 'xxx' already using IPv4 Address xxx`**
+
+- **核对/定位方法**：`kubectl logs -n kube-system calico-node-xxxx --previous` 查看启动日志，确认冲突 IP 与网卡；`kubectl exec -n kube-system calico-node-xxxx -- calicoctl node status` / `calicoctl get node` 检查节点记录与 IPAM（详见 [calico-node-ipv4-conflict-report.md](../refs/calico-node-ipv4-conflict-report.md)）；
+- **处理方法**：先只读定位根因（残留记录 / 同名不同 IP / 选错网卡），再按根因处理——清理已下线节点残留记录（`calicoctl delete node`）、释放残留 IP（`calicoctl ipam release`）、或修正 IP 自动检测（`IP_AUTODETECTION_METHOD`）；最后 `kubectl delete pod` 由 DaemonSet 重建。**不建议用 `pkill runsvdir`**（只能重启容器，不解决根因，详见报告 §2）。
 
 ---
 
