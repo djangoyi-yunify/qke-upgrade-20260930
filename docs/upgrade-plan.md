@@ -1,6 +1,6 @@
 # QKE v3.3.0 集群 Kubernetes 升级方案
 
-> **状态**：迭代中（第 58 轮：去掉 §9 风险 #2"etcd 版本"（子 agent 调研确认 etcd v3.5.13 满足 k8s v1.33.4 要求，无兼容性风险，生成 [refs/etcd-k8s-1.33-support-report.md](../refs/etcd-k8s-1.33-support-report.md)）；§10.3 etcd 升级命令标注为可选升级项）
+> **状态**：迭代中（第 59 轮：§8.6⑥ 回退数据库字段"平台状态"改为"qke 实例状态"）
 > **目标**：QKE v3.3.0 集群（k8s v1.27.10）升级到 k8s **v1.33.4**，含升级方法、问题处理、回退方案。
 > **环境**：离线（无法访问互联网）。
 > **相关文档**：测试环境情况见 [test-environment.md](test-environment.md)；决策思路见 [decisions-rationale.md](decisions-rationale.md)。
@@ -536,7 +536,7 @@ kubectl -n kube-system set image deployment coredns coredns=<registry>/coredns/c
 
 **⑥ 回退数据库字段**（若已调整）
 
-还原 qke_db_cluster 的 k8s 版本字段，保证平台状态与回退后的实际版本一致。
+还原 qke_db_cluster 的 k8s 版本字段，保证 qke 实例状态与回退后的实际版本一致。
 
 ### 8.7 回退后检查
 
